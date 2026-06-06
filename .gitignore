@@ -1,0 +1,15 @@
+node_modules
+dist
+out
+.turbo
+.vscode-test
+*.tsbuildinfo
+*.log
+.env
+.env.*
+.codex-backups
+.idea
+codex-main
+codex-main.zip
+tsserver-smoke.log
+packages/codex-js/.tmp-tests
