@@ -12,4 +12,5 @@ out
 codex-main
 codex-main.zip
 tsserver-smoke.log
-packages/codex-js/.tmp-tests
+.codex-js
+*.7z

@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/mcp/protocol.js
+ *
+ * MCP 客户端、stdio 连接、协议转换和运行时封装。
+ */
 export const MCP_CONTENT_TYPES = Object.freeze({
   TEXT: "text",
   IMAGE: "image",
@@ -17,6 +22,12 @@ export const MCP_ERRORS = Object.freeze({
 const MCP_TOOL_NAME_PREFIX = "mcp__";
 const MCP_TOOL_NAME_DELIMITER = "__";
 
+/**
+ * 归一化 normalize mcp server info 相关数据。
+ *
+ * @param {unknown} info - info 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeMcpServerInfo(info = {}) {
   return {
     name: String(info.name ?? ""),
@@ -28,6 +39,12 @@ export function normalizeMcpServerInfo(info = {}) {
   };
 }
 
+/**
+ * 归一化 normalize mcp tool 相关数据。
+ *
+ * @param {unknown} tool - tool 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeMcpTool(tool = {}) {
   return {
     name: String(tool.name ?? ""),
@@ -44,6 +61,12 @@ export function normalizeMcpTool(tool = {}) {
   };
 }
 
+/**
+ * 归一化 normalize mcp resource 相关数据。
+ *
+ * @param {unknown} resource - resource 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeMcpResource(resource = {}) {
   return {
     annotations: resource.annotations ?? null,
@@ -58,6 +81,12 @@ export function normalizeMcpResource(resource = {}) {
   };
 }
 
+/**
+ * 归一化 normalize mcp resource template 相关数据。
+ *
+ * @param {unknown} template - template 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeMcpResourceTemplate(template = {}) {
   return {
     annotations: template.annotations ?? null,
@@ -69,6 +98,12 @@ export function normalizeMcpResourceTemplate(template = {}) {
   };
 }
 
+/**
+ * 归一化 normalize mcp resource content 相关数据。
+ *
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeMcpResourceContent(content = {}) {
   const base = {
     uri: String(content.uri ?? ""),
@@ -89,6 +124,12 @@ export function normalizeMcpResourceContent(content = {}) {
   };
 }
 
+/**
+ * 创建 create mcp call tool result 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createMcpCallToolResult(options = {}) {
   return {
     content: Array.isArray(options.content) ? options.content : [],
@@ -98,6 +139,12 @@ export function createMcpCallToolResult(options = {}) {
   };
 }
 
+/**
+ * 处理 mcp call tool result to text 相关逻辑。
+ *
+ * @param {unknown} result - result 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function mcpCallToolResultToText(result = {}) {
   const normalized = createMcpCallToolResult(result);
   const text = [];
@@ -119,6 +166,12 @@ export function mcpCallToolResultToText(result = {}) {
   return text.join("\n");
 }
 
+/**
+ * 创建 create mcp text content 相关数据。
+ *
+ * @param {unknown} text - text 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createMcpTextContent(text) {
   return {
     type: MCP_CONTENT_TYPES.TEXT,
@@ -126,6 +179,13 @@ export function createMcpTextContent(text) {
   };
 }
 
+/**
+ * 创建 create mcp tool name 相关数据。
+ *
+ * @param {unknown} serverName - serverName 参数。
+ * @param {unknown} toolName - toolName 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createMcpToolName(serverName, toolName) {
   const server = sanitizeMcpToolNamePart(serverName);
   const tool = sanitizeMcpToolNamePart(toolName);
@@ -137,6 +197,12 @@ export function createMcpToolName(serverName, toolName) {
   return `${MCP_TOOL_NAME_PREFIX}${server}${MCP_TOOL_NAME_DELIMITER}${tool}`;
 }
 
+/**
+ * 解析 parse mcp tool name 相关数据。
+ *
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function parseMcpToolName(name) {
   const value = String(name ?? "");
 
@@ -156,6 +222,12 @@ export function parseMcpToolName(name) {
   };
 }
 
+/**
+ * 创建 create mcp tool spec 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createMcpToolSpec(options = {}) {
   const server = String(options.server ?? "");
   const tool = normalizeMcpTool(options.tool ?? {});
@@ -179,6 +251,12 @@ export function createMcpToolSpec(options = {}) {
   };
 }
 
+/**
+ * 处理 sanitize mcp tool name part 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function sanitizeMcpToolNamePart(value) {
   return String(value ?? "")
     .trim()
@@ -186,6 +264,12 @@ function sanitizeMcpToolNamePart(value) {
     .replace(/^_+|_+$/g, "");
 }
 
+/**
+ * 归一化 normalize optional integer 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeOptionalInteger(value) {
   if (value == null) {
     return null;

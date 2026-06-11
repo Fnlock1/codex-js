@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/config.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -34,6 +39,14 @@ export const CONFIG_WRITE_ERROR_CODES = Object.freeze({
   USER_LAYER_NOT_FOUND: "userLayerNotFound"
 });
 
+/**
+ * 读取 read app server config 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function readAppServerConfig(options = {}) {
   const configPath = options.configPath ?? options.config_path ?? null;
   const cwd = options.cwd == null ? null : resolve(String(options.cwd));
@@ -100,6 +113,14 @@ export async function readAppServerConfig(options = {}) {
   };
 }
 
+/**
+ * 读取 read app server config requirements 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function readAppServerConfigRequirements(options = {}) {
   if (!options.requirements) {
     return {
@@ -112,6 +133,15 @@ export async function readAppServerConfigRequirements(options = {}) {
   };
 }
 
+/**
+ * 写入 write app server config value 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function writeAppServerConfigValue(params = {}, options = {}) {
   return await writeAppServerConfigEdits({
     edits: [
@@ -126,6 +156,15 @@ export async function writeAppServerConfigValue(params = {}, options = {}) {
   }, options);
 }
 
+/**
+ * 处理 batch write app server config 相关逻辑。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function batchWriteAppServerConfig(params = {}, options = {}) {
   const edits = params.edits;
 
@@ -147,6 +186,15 @@ export async function batchWriteAppServerConfig(params = {}, options = {}) {
   }, options);
 }
 
+/**
+ * 写入 write app server config edits 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} request - request 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function writeAppServerConfigEdits(request = {}, options = {}) {
   if (!options.allowConfigWrites) {
     throw createConfigWriteError(
@@ -196,6 +244,13 @@ export async function writeAppServerConfigEdits(request = {}, options = {}) {
   };
 }
 
+/**
+ * 应用 apply config value write 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @param {unknown} edit - edit 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function applyConfigValueWrite(config, edit = {}) {
   const keyPath = requireConfigParam(edit, "keyPath");
   const segments = parseConfigKeyPath(keyPath);
@@ -222,6 +277,12 @@ export function applyConfigValueWrite(config, edit = {}) {
   return config;
 }
 
+/**
+ * 解析 parse config key path 相关数据。
+ *
+ * @param {unknown} keyPath - keyPath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function parseConfigKeyPath(keyPath) {
   const text = String(keyPath ?? "");
 
@@ -322,12 +383,24 @@ export function parseConfigKeyPath(keyPath) {
   return segments;
 }
 
+/**
+ * 创建 create config version 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createConfigVersion(config = {}) {
   return `sha256:${createHash("sha256")
     .update(stableJsonStringify(normalizeCodexJsConfig(config)))
     .digest("hex")}`;
 }
 
+/**
+ * 处理 config to app server config 相关逻辑。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function configToAppServerConfig(config = {}) {
   const normalized = normalizeCodexJsConfig(config);
 
@@ -372,6 +445,12 @@ export function configToAppServerConfig(config = {}) {
   };
 }
 
+/**
+ * 创建 create config layer 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createConfigLayer(options = {}) {
   return {
     name: String(options.name ?? APP_SERVER_CONFIG_LAYER_SOURCES.DEFAULT),
@@ -382,6 +461,12 @@ export function createConfigLayer(options = {}) {
   };
 }
 
+/**
+ * 创建 create config origins 相关数据。
+ *
+ * @param {unknown} layers - layers 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createConfigOrigins(layers = []) {
   const origins = {};
 
@@ -397,6 +482,12 @@ export function createConfigOrigins(layers = []) {
   return origins;
 }
 
+/**
+ * 归一化 normalize config requirements 相关数据。
+ *
+ * @param {unknown} requirements - requirements 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeConfigRequirements(requirements = {}) {
   return {
     allowedApprovalPolicies: normalizeNullableArray(requirements.allowedApprovalPolicies ?? requirements.allowed_approval_policies),
@@ -417,6 +508,14 @@ export function normalizeConfigRequirements(requirements = {}) {
   };
 }
 
+/**
+ * 处理 config file exists 相关逻辑。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} configPath - configPath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function configFileExists(configPath) {
   if (!configPath) {
     return false;
@@ -430,6 +529,13 @@ export async function configFileExists(configPath) {
   }
 }
 
+/**
+ * 解析 resolve config write path 相关数据。
+ *
+ * @param {unknown} request - request 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function resolveConfigWritePath(request = {}, options = {}) {
   const optionPath = options.configPath ?? options.config_path ?? null;
   const requestedPath = request.filePath ?? request.file_path ?? optionPath;
@@ -461,6 +567,14 @@ function resolveConfigWritePath(request = {}, options = {}) {
   return resolvedRequested;
 }
 
+/**
+ * 加载 load config for write 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} configPath - configPath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function loadConfigForWrite(configPath) {
   try {
     const content = await readFile(configPath, "utf8");
@@ -484,6 +598,15 @@ async function loadConfigForWrite(configPath) {
   }
 }
 
+/**
+ * 设置 set config path 相关数据。
+ *
+ * @param {unknown} root - root 参数。
+ * @param {unknown} segments - segments 参数。
+ * @param {unknown} value - value 参数。
+ * @param {unknown} mergeStrategy - mergeStrategy 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function setConfigPath(root, segments, value, mergeStrategy) {
   const last = segments.at(-1);
   let current = root;
@@ -508,6 +631,13 @@ function setConfigPath(root, segments, value, mergeStrategy) {
   current[last] = value;
 }
 
+/**
+ * 处理 clear config path 相关逻辑。
+ *
+ * @param {unknown} root - root 参数。
+ * @param {unknown} segments - segments 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clearConfigPath(root, segments) {
   const last = segments.at(-1);
   let current = root;
@@ -523,6 +653,12 @@ function clearConfigPath(root, segments) {
   return delete current[last];
 }
 
+/**
+ * 归一化 normalize merge strategy 相关数据。
+ *
+ * @param {unknown} strategy - strategy 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeMergeStrategy(strategy) {
   const normalized = String(strategy ?? CONFIG_MERGE_STRATEGIES.REPLACE);
 
@@ -543,6 +679,13 @@ function normalizeMergeStrategy(strategy) {
   return normalized;
 }
 
+/**
+ * 处理 require config param 相关逻辑。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function requireConfigParam(params, name) {
   const value = params?.[name] ?? params?.[toSnakeCase(name)];
 
@@ -560,6 +703,14 @@ function requireConfigParam(params, name) {
   return value;
 }
 
+/**
+ * 创建 create config write error 相关数据。
+ *
+ * @param {unknown} configWriteErrorCode - configWriteErrorCode 参数。
+ * @param {unknown} message - message 参数。
+ * @param {unknown} data - data 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createConfigWriteError(configWriteErrorCode, message, data = {}) {
   const error = new Error(String(message ?? ""));
   error.code = APP_SERVER_ERROR_CODES.INVALID_PARAMS;
@@ -570,6 +721,13 @@ function createConfigWriteError(configWriteErrorCode, message, data = {}) {
   return error;
 }
 
+/**
+ * 处理 deep merge 相关逻辑。
+ *
+ * @param {unknown} left - left 参数。
+ * @param {unknown} right - right 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function deepMerge(left, right) {
   const merged = {
     ...left
@@ -584,6 +742,12 @@ function deepMerge(left, right) {
   return merged;
 }
 
+/**
+ * 处理 stable json stringify 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function stableJsonStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableJsonStringify(entry)).join(",")}]`;
@@ -599,18 +763,42 @@ function stableJsonStringify(value) {
   return JSON.stringify(value);
 }
 
+/**
+ * 克隆 clone json 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function cloneJson(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
+/**
+ * 判断是否为 is plain object 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isPlainObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+/**
+ * 处理 to snake case 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function toSnakeCase(value) {
   return String(value).replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`);
 }
 
+/**
+ * 归一化 normalize nullable array 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeNullableArray(value) {
   if (value == null) {
     return null;
@@ -619,6 +807,12 @@ function normalizeNullableArray(value) {
   return Array.isArray(value) ? value.map((entry) => String(entry)) : null;
 }
 
+/**
+ * 归一化 normalize nullable boolean 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeNullableBoolean(value) {
   return value == null ? null : Boolean(value);
 }

@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/tools/builtins.js
+ *
+ * 工具定义、路由、handler、内置工具和上游工具格式转换。
+ */
 import { BUILTIN_TOOL_NAMES } from "./runtime.js";
 
 export const BUILTIN_TOOL_CATEGORIES = Object.freeze({
@@ -8,6 +13,7 @@ export const BUILTIN_TOOL_CATEGORIES = Object.freeze({
   MCP: "mcp",
   SUB_AGENT: "sub_agent",
   GOAL: "goal",
+  MEMORY: "memory",
   PLACEHOLDER: "placeholder"
 });
 
@@ -17,6 +23,15 @@ export const TOOL_EXPOSURE = Object.freeze({
   HIDDEN: "hidden"
 });
 
+/**
+ * 处理 function tool spec 相关逻辑。
+ *
+ * @param {unknown} name - name 参数。
+ * @param {unknown} description - description 参数。
+ * @param {unknown} parameters - parameters 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function functionToolSpec(name, description, parameters = {}, options = {}) {
   return {
     type: "function",
@@ -33,6 +48,10 @@ function functionToolSpec(name, description, parameters = {}, options = {}) {
   };
 }
 
+/**
+ * 创建 create shell command tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createShellCommandToolSpec() {
   return {
     type: "function",
@@ -71,6 +90,10 @@ export function createShellCommandToolSpec() {
   };
 }
 
+/**
+ * 创建 create exec tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createExecToolSpec() {
   return {
     ...createShellCommandToolSpec(),
@@ -79,6 +102,10 @@ export function createExecToolSpec() {
   };
 }
 
+/**
+ * 创建 create exec command tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createExecCommandToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.EXEC_COMMAND,
@@ -115,6 +142,10 @@ export function createExecCommandToolSpec() {
   );
 }
 
+/**
+ * 创建 create write stdin tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createWriteStdinToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.WRITE_STDIN,
@@ -147,6 +178,10 @@ export function createWriteStdinToolSpec() {
   );
 }
 
+/**
+ * 创建 create apply patch tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchToolSpec() {
   return {
     type: "function",
@@ -167,6 +202,10 @@ export function createApplyPatchToolSpec() {
   };
 }
 
+/**
+ * 创建 create read file tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createReadFileToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.READ_FILE,
@@ -184,6 +223,10 @@ export function createReadFileToolSpec() {
   );
 }
 
+/**
+ * 创建 create list files tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createListFilesToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.LIST_FILES,
@@ -208,6 +251,10 @@ export function createListFilesToolSpec() {
   );
 }
 
+/**
+ * 创建 create search files tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSearchFilesToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.SEARCH_FILES,
@@ -233,6 +280,10 @@ export function createSearchFilesToolSpec() {
   );
 }
 
+/**
+ * 创建 create git status tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createGitStatusToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.GIT_STATUS,
@@ -249,6 +300,10 @@ export function createGitStatusToolSpec() {
   );
 }
 
+/**
+ * 创建 create git diff tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createGitDiffToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.GIT_DIFF,
@@ -273,6 +328,10 @@ export function createGitDiffToolSpec() {
   );
 }
 
+/**
+ * 创建 create request permissions tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createRequestPermissionsToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.REQUEST_PERMISSIONS,
@@ -295,6 +354,12 @@ export function createRequestPermissionsToolSpec() {
   );
 }
 
+/**
+ * 创建 create view image tool spec 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createViewImageToolSpec(options = {}) {
   const properties = {
     path: {
@@ -346,6 +411,12 @@ export function createViewImageToolSpec(options = {}) {
   );
 }
 
+/**
+ * 创建 create web search tool spec 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createWebSearchToolSpec(options = {}) {
   return {
     type: "web_search",
@@ -359,6 +430,12 @@ export function createWebSearchToolSpec(options = {}) {
   };
 }
 
+/**
+ * 创建 create image generation tool spec 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createImageGenerationToolSpec(options = {}) {
   return {
     type: "image_generation",
@@ -368,6 +445,10 @@ export function createImageGenerationToolSpec(options = {}) {
   };
 }
 
+/**
+ * 创建 create tool search tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolSearchToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.TOOL_SEARCH,
@@ -389,6 +470,10 @@ export function createToolSearchToolSpec() {
   );
 }
 
+/**
+ * 创建 create list mcp resources tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createListMcpResourcesToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.LIST_MCP_RESOURCES,
@@ -409,6 +494,10 @@ export function createListMcpResourcesToolSpec() {
   );
 }
 
+/**
+ * 创建 create list mcp resource templates tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createListMcpResourceTemplatesToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.LIST_MCP_RESOURCE_TEMPLATES,
@@ -429,6 +518,10 @@ export function createListMcpResourceTemplatesToolSpec() {
   );
 }
 
+/**
+ * 创建 create read mcp resource tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createReadMcpResourceToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.READ_MCP_RESOURCE,
@@ -450,6 +543,10 @@ export function createReadMcpResourceToolSpec() {
   );
 }
 
+/**
+ * 创建 create spawn agent tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSpawnAgentToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.SPAWN_AGENT,
@@ -463,6 +560,15 @@ export function createSpawnAgentToolSpec() {
         context: {
           type: "string",
           description: "Optional context for the sub-agent."
+        },
+        expert: {
+          type: "string",
+          description: "Optional expert profile id, for example architect, tester, frontend, security, performance, memory, tools, or general."
+        },
+        mode: {
+          type: "string",
+          enum: ["auto", "manual"],
+          description: "auto lets the runtime choose an expert from the task; manual only uses the provided expert or general."
         }
       },
       required: ["task"],
@@ -471,6 +577,92 @@ export function createSpawnAgentToolSpec() {
   );
 }
 
+/**
+ * 创建专家调度工具 schema。
+ *
+ * @returns {object} 工具定义。
+ */
+export function createPlanExpertsToolSpec() {
+  return functionToolSpec(
+    BUILTIN_TOOL_NAMES.PLAN_EXPERTS,
+    "Plan which expert sub-agents should be spawned for a complex task before calling spawn_agent.",
+    {
+      properties: {
+        task: {
+          type: "string",
+          description: "Original user task to split into expert assignments."
+        },
+        experts: {
+          type: "array",
+          items: {
+            type: "string"
+          },
+          description: "Optional explicit expert ids, such as frontend, architect, tester, memory, tools, security."
+        },
+        custom_experts: {
+          type: "array",
+          description: "Optional expert profiles dynamically created by the technical leader for this task.",
+          items: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description: "Stable expert id, for example video_domain or api_contract."
+              },
+              name: {
+                type: "string",
+                description: "Human readable expert name."
+              },
+              role: {
+                type: "string",
+                description: "Machine readable expert role."
+              },
+              description: {
+                type: "string",
+                description: "What this expert should focus on."
+              },
+              prompt: {
+                type: "string",
+                description: "AI-generated full prompt for this dynamic expert. This should define expertise, thinking style, constraints, output format, and task-specific focus."
+              },
+              system_prompt: {
+                type: "string",
+                description: "Alias of prompt for model providers that prefer system_prompt naming."
+              },
+              instructions: {
+                type: "array",
+                items: {
+                  type: "string"
+                },
+                description: "Specific instructions for this expert."
+              },
+              keywords: {
+                type: "array",
+                items: {
+                  type: "string"
+                },
+                description: "Keywords used for automatic matching."
+              }
+            },
+            required: ["id", "name", "role", "description", "prompt"],
+            additionalProperties: false
+          }
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of expert assignments."
+        }
+      },
+      required: ["task"],
+      additionalProperties: false
+    }
+  );
+}
+
+/**
+ * 创建 create wait agent tool spec 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createWaitAgentToolSpec() {
   return functionToolSpec(
     BUILTIN_TOOL_NAMES.WAIT_AGENT,
@@ -488,6 +680,12 @@ export function createWaitAgentToolSpec() {
   );
 }
 
+/**
+ * 创建 create goal tool spec 相关数据。
+ *
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createGoalToolSpec(name = BUILTIN_TOOL_NAMES.GET_GOAL) {
   const descriptions = {
     [BUILTIN_TOOL_NAMES.GET_GOAL]: "Get the current thread goal.",
@@ -518,6 +716,102 @@ export function createGoalToolSpec(name = BUILTIN_TOOL_NAMES.GET_GOAL) {
   );
 }
 
+/**
+ * 创建长期记忆相关工具的 schema。
+ *
+ * @param {string} name - 工具名称。
+ * @returns {object} 工具定义。
+ */
+export function createMemoryToolSpec(name = BUILTIN_TOOL_NAMES.RECALL_MEMORY) {
+  const descriptions = {
+    [BUILTIN_TOOL_NAMES.REMEMBER]: "Store a durable memory that can help future turns.",
+    [BUILTIN_TOOL_NAMES.RECALL_MEMORY]: "Recall relevant long-term memories for the current task.",
+    [BUILTIN_TOOL_NAMES.FORGET_MEMORY]: "Delete a stored memory by id.",
+    [BUILTIN_TOOL_NAMES.LIST_MEMORIES]: "List stored memories visible to the current thread."
+  };
+  const scopeProperty = {
+    type: "string",
+    enum: ["thread", "project", "user"],
+    description: "Memory scope. thread is current conversation, project is current workspace, user is global."
+  };
+  const expertIdProperty = {
+    type: "string",
+    description: "Optional expert id for expert-private memory. Sub-agents automatically use their own expert id."
+  };
+
+  if (name === BUILTIN_TOOL_NAMES.REMEMBER) {
+    return functionToolSpec(
+      name,
+      descriptions[name],
+      {
+        properties: {
+          text: {
+            type: "string",
+            description: "Concrete memory text to store."
+          },
+          scope: scopeProperty,
+          expert_id: expertIdProperty,
+          tags: {
+            type: "array",
+            items: {
+              type: "string"
+            },
+            description: "Optional short tags for later recall."
+          },
+          metadata: {
+            type: "object",
+            description: "Optional structured metadata.",
+            additionalProperties: true
+          }
+        },
+        required: ["text"],
+        additionalProperties: false
+      }
+    );
+  }
+
+  if (name === BUILTIN_TOOL_NAMES.FORGET_MEMORY) {
+    return functionToolSpec(
+      name,
+      descriptions[name],
+      {
+        properties: {
+          id: {
+            type: "string",
+            description: "Memory id to delete."
+          }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
+    );
+  }
+
+  return functionToolSpec(
+    name,
+    descriptions[name] ?? "Manage long-term memories.",
+    {
+      properties: {
+        query: {
+          type: "string",
+          description: "Search text for memory recall."
+        },
+        scope: scopeProperty,
+        expert_id: expertIdProperty,
+        limit: {
+          type: "number",
+          description: "Maximum number of memories to return."
+        }
+      },
+      additionalProperties: false
+    }
+  );
+}
+
+/**
+ * 创建 create unified exec output schema 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createUnifiedExecOutputSchema() {
   return {
     type: "object",
@@ -546,6 +840,10 @@ function createUnifiedExecOutputSchema() {
   };
 }
 
+/**
+ * 创建 create permission profile schema 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createPermissionProfileSchema() {
   return {
     type: "object",
@@ -583,6 +881,15 @@ function createPermissionProfileSchema() {
   };
 }
 
+/**
+ * 处理 placeholder definition 相关逻辑。
+ *
+ * @param {unknown} name - name 参数。
+ * @param {unknown} spec - spec 参数。
+ * @param {unknown} category - category 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function placeholderDefinition(name, spec, category, options = {}) {
   return {
     name,
@@ -594,12 +901,19 @@ function placeholderDefinition(name, spec, category, options = {}) {
       requiresSandbox: Boolean(options.requiresSandbox ?? false),
       approvalHandledBy: options.approvalHandledBy,
       sandboxHandledBy: options.sandboxHandledBy,
+      expertTeamOnly: Boolean(options.expertTeamOnly ?? false),
       safePlaceholder: true
     },
     handler: options.handler
   };
 }
 
+/**
+ * 创建 create builtin tool definitions 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createBuiltinToolDefinitions(options = {}) {
   const placeholderHandler = options.placeholderHandler;
   const definitions = [
@@ -771,12 +1085,21 @@ export function createBuiltinToolDefinitions(options = {}) {
       }
     ),
     placeholderDefinition(
+      BUILTIN_TOOL_NAMES.PLAN_EXPERTS,
+      createPlanExpertsToolSpec(),
+      BUILTIN_TOOL_CATEGORIES.SUB_AGENT,
+      {
+        expertTeamOnly: true,
+        handler: options.planExpertsHandler ?? placeholderHandler
+      }
+    ),
+    placeholderDefinition(
       BUILTIN_TOOL_NAMES.SPAWN_AGENT,
       createSpawnAgentToolSpec(),
       BUILTIN_TOOL_CATEGORIES.SUB_AGENT,
       {
-        exposure: TOOL_EXPOSURE.DEFERRED,
         requiresApproval: true,
+        expertTeamOnly: true,
         handler: options.spawnAgentHandler ?? placeholderHandler
       }
     ),
@@ -785,7 +1108,7 @@ export function createBuiltinToolDefinitions(options = {}) {
       createWaitAgentToolSpec(),
       BUILTIN_TOOL_CATEGORIES.SUB_AGENT,
       {
-        exposure: TOOL_EXPOSURE.DEFERRED,
+        expertTeamOnly: true,
         handler: options.waitAgentHandler ?? placeholderHandler
       }
     ),
@@ -814,6 +1137,38 @@ export function createBuiltinToolDefinitions(options = {}) {
       {
         exposure: TOOL_EXPOSURE.HIDDEN,
         handler: options.updateGoalHandler ?? placeholderHandler
+      }
+    ),
+    placeholderDefinition(
+      BUILTIN_TOOL_NAMES.REMEMBER,
+      createMemoryToolSpec(BUILTIN_TOOL_NAMES.REMEMBER),
+      BUILTIN_TOOL_CATEGORIES.MEMORY,
+      {
+        handler: options.rememberHandler ?? placeholderHandler
+      }
+    ),
+    placeholderDefinition(
+      BUILTIN_TOOL_NAMES.RECALL_MEMORY,
+      createMemoryToolSpec(BUILTIN_TOOL_NAMES.RECALL_MEMORY),
+      BUILTIN_TOOL_CATEGORIES.MEMORY,
+      {
+        handler: options.recallMemoryHandler ?? placeholderHandler
+      }
+    ),
+    placeholderDefinition(
+      BUILTIN_TOOL_NAMES.FORGET_MEMORY,
+      createMemoryToolSpec(BUILTIN_TOOL_NAMES.FORGET_MEMORY),
+      BUILTIN_TOOL_CATEGORIES.MEMORY,
+      {
+        handler: options.forgetMemoryHandler ?? placeholderHandler
+      }
+    ),
+    placeholderDefinition(
+      BUILTIN_TOOL_NAMES.LIST_MEMORIES,
+      createMemoryToolSpec(BUILTIN_TOOL_NAMES.LIST_MEMORIES),
+      BUILTIN_TOOL_CATEGORIES.MEMORY,
+      {
+        handler: options.listMemoriesHandler ?? placeholderHandler
       }
     )
   ];

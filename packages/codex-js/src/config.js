@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/config.js
+ *
+ *
+ */
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -7,6 +12,7 @@ export const DEFAULT_CODEX_JS_CONFIG = Object.freeze({
   schemaVersion: CONFIG_SCHEMA_VERSION,
   workingDirectory: null,
   sessionStoreDirectory: null,
+  memoryStoreDirectory: null,
   mockResponse: null,
   model: {
     provider: "mock",
@@ -59,15 +65,28 @@ export const DEFAULT_CODEX_JS_CONFIG = Object.freeze({
   }
 });
 
+/**
+ * 创建 create default config 相关数据。
+ *
+ * @param {unknown} overrides - overrides 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createDefaultConfig(overrides = {}) {
   return normalizeCodexJsConfig(overrides);
 }
 
+/**
+ * 归一化 normalize codex js config 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeCodexJsConfig(config = {}) {
   return {
     schemaVersion: CONFIG_SCHEMA_VERSION,
     workingDirectory: normalizeOptionalPath(config.workingDirectory),
     sessionStoreDirectory: normalizeOptionalPath(config.sessionStoreDirectory),
+    memoryStoreDirectory: normalizeOptionalPath(config.memoryStoreDirectory ?? config.memory_store_directory),
     mockResponse: config.mockResponse == null ? null : String(config.mockResponse),
     model: normalizeModelConfig(config.model),
     runtime: {
@@ -98,6 +117,14 @@ export function normalizeCodexJsConfig(config = {}) {
   };
 }
 
+/**
+ * 加载 load codex js config 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} filePath - filePath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function loadCodexJsConfig(filePath) {
   if (!filePath) {
     return createDefaultConfig();
@@ -107,33 +134,60 @@ export async function loadCodexJsConfig(filePath) {
   return normalizeCodexJsConfig(JSON.parse(content));
 }
 
+/**
+ * 应用 apply cli config overrides 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function applyCliConfigOverrides(config, parsed = {}) {
   return normalizeCodexJsConfig({
     ...config,
     workingDirectory: parsed.workingDirectory ?? config.workingDirectory,
     sessionStoreDirectory: parsed.sessionStoreDirectory ?? config.sessionStoreDirectory,
+    memoryStoreDirectory: parsed.memoryStoreDirectory ?? config.memoryStoreDirectory,
     mockResponse: parsed.mockResponse ?? config.mockResponse,
     model: mergeModelCliOverrides(config.model, parsed),
     tools: mergeToolsCliOverrides(config.tools, parsed)
   });
 }
 
+/**
+ * 处理 config to codex options 相关逻辑。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function configToCodexOptions(config = {}) {
   const normalized = normalizeCodexJsConfig(config);
 
   return {
     workingDirectory: normalized.workingDirectory ?? undefined,
     sessionStoreDirectory: normalized.sessionStoreDirectory ?? undefined,
+    memoryStoreDirectory: normalized.memoryStoreDirectory ?? undefined,
     mockResponse: normalized.mockResponse ?? undefined
   };
 }
 
+/**
+ * 脱敏 redact codex js config 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function redactCodexJsConfig(config = {}) {
   const normalized = normalizeCodexJsConfig(config);
 
   return redactSecrets(normalized);
 }
 
+/**
+ * 归一化 normalize optional path 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeOptionalPath(value) {
   if (value == null || value === "") {
     return null;
@@ -142,6 +196,12 @@ function normalizeOptionalPath(value) {
   return resolve(String(value));
 }
 
+/**
+ * 归一化 normalize model config 相关数据。
+ *
+ * @param {unknown} model - model 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeModelConfig(model = {}) {
   const adapterPath = normalizeOptionalPath(
     model.adapterPath ?? model.adapter_path ?? model.path
@@ -169,6 +229,12 @@ function normalizeModelConfig(model = {}) {
   };
 }
 
+/**
+ * 归一化 normalize tools config 相关数据。
+ *
+ * @param {unknown} tools - tools 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeToolsConfig(tools = {}) {
   return {
     hosted: {
@@ -195,6 +261,13 @@ function normalizeToolsConfig(tools = {}) {
   };
 }
 
+/**
+ * 处理 merge tools cli overrides 相关逻辑。
+ *
+ * @param {unknown} tools - tools 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function mergeToolsCliOverrides(tools = {}, parsed = {}) {
   const normalized = normalizeToolsConfig(tools);
   const next = {
@@ -244,6 +317,13 @@ function mergeToolsCliOverrides(tools = {}, parsed = {}) {
   return next;
 }
 
+/**
+ * 处理 merge model cli overrides 相关逻辑。
+ *
+ * @param {unknown} model - model 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function mergeModelCliOverrides(model = {}, parsed = {}) {
   const normalized = normalizeModelConfig(model);
   const next = {
@@ -299,6 +379,12 @@ function mergeModelCliOverrides(model = {}, parsed = {}) {
   return next;
 }
 
+/**
+ * 归一化 normalize string record 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeStringRecord(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -311,6 +397,12 @@ function normalizeStringRecord(value) {
   );
 }
 
+/**
+ * 归一化 normalize optional string 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeOptionalString(value) {
   if (value == null || value === "") {
     return null;
@@ -319,6 +411,12 @@ function normalizeOptionalString(value) {
   return String(value);
 }
 
+/**
+ * 归一化 normalize mcp server configs 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeMcpServerConfigs(value) {
   return (Array.isArray(value) ? value : [])
     .map((entry) => {
@@ -342,6 +440,12 @@ function normalizeMcpServerConfigs(value) {
     .filter(Boolean);
 }
 
+/**
+ * 解析 parse mcp server config string 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function parseMcpServerConfigString(value) {
   const text = String(value ?? "");
   const [namePart, commandPart = ""] = text.split("=", 2);
@@ -366,6 +470,13 @@ function parseMcpServerConfigString(value) {
   };
 }
 
+/**
+ * 归一化 normalize positive integer 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @param {unknown} fallback - fallback 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizePositiveInteger(value, fallback) {
   const number = Number(value);
 
@@ -376,6 +487,13 @@ function normalizePositiveInteger(value, fallback) {
   return Math.trunc(number);
 }
 
+/**
+ * 脱敏 redact secrets 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @param {unknown} path - path 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function redactSecrets(value, path = []) {
   if (Array.isArray(value)) {
     return value.map((entry, index) => redactSecrets(entry, path.concat(String(index))));
@@ -396,6 +514,13 @@ function redactSecrets(value, path = []) {
   );
 }
 
+/**
+ * 判断是否为 is secret key 相关数据。
+ *
+ * @param {unknown} key - key 参数。
+ * @param {unknown} path - path 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isSecretKey(key, path) {
   const normalized = String(key ?? "").toLowerCase();
   const joinedPath = path.concat(normalized).join(".");

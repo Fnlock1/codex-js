@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/events.js
+ *
+ *
+ */
 export {
   EVENT_TYPES,
   createErrorEvent,

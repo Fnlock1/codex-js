@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/cli.js
+ *
+ * 命令行参数解析、运行模式选择和 CLI 编排逻辑。
+ */
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -25,6 +30,7 @@ import {
 } from "./model-adapters/openai-compatible-model-client.js";
 import { createPluginModelClient } from "./model-adapters/plugin-model-client.js";
 import { AgentCoordinator } from "./agents/coordinator.js";
+import { formatExpertAgentPrompt } from "./agents/expert-profiles.js";
 import {
   APPROVAL_DECISIONS,
   APPROVAL_REVIEW_DECISIONS,
@@ -43,6 +49,7 @@ import {
   formatToolDoctorText,
   formatToolReportText
 } from "./tools/report.js";
+import { startCodexJsUiServer } from "./ui/server.js";
 import {
   APP_SERVER_METHODS,
   createInProcessAppServerTransport,
@@ -53,6 +60,15 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJsonPath = resolve(__dirname, "../package.json");
 
+/**
+ * 执行 run cli 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} argv - argv 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function runCli(argv, io = {}) {
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
@@ -60,6 +76,13 @@ export async function runCli(argv, io = {}) {
   const parsed = parseArgs(argv);
   parsed.stdin = stdin;
   parsed.stderr = stderr;
+
+  if (!parsed.modelApiKey) {
+    parsed.modelApiKey =
+      io.env?.CODEX_JS_UI_MODEL_API_KEY ??
+      io.env?.CODEX_JS_MODEL_API_KEY ??
+      undefined;
+  }
 
   if (parsed.help || parsed.command === "help") {
     stdout.write(helpText());
@@ -105,6 +128,13 @@ export async function runCli(argv, io = {}) {
 
   if (parsed.command === "tools") {
     return await runToolsCommand(parsed, {
+      stdout,
+      stderr
+    });
+  }
+
+  if (parsed.command === "ui") {
+    return await runUiCommand(parsed, {
       stdout,
       stderr
     });
@@ -177,6 +207,12 @@ export async function runCli(argv, io = {}) {
   return 0;
 }
 
+/**
+ * 解析 parse args 相关数据。
+ *
+ * @param {unknown} argv - argv 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function parseArgs(argv) {
   const args = [...argv];
   const parsed = {
@@ -201,6 +237,9 @@ export function parseArgs(argv) {
     modelOptions: {},
     modelTimeoutMs: undefined,
     maxToolIterations: undefined,
+    uiPort: undefined,
+    uiHost: undefined,
+    expertTeam: false,
     enableHostedTools: false,
     webSearchUrl: undefined,
     imageGenerationUrl: undefined,
@@ -233,7 +272,7 @@ export function parseArgs(argv) {
     parsed.command = args.shift();
   }
 
-  if (["config", "app-server", "thread", "tools"].includes(parsed.command)) {
+  if (["config", "app-server", "thread", "tools", "ui"].includes(parsed.command)) {
     parsed.subcommand = args[0] && !args[0].startsWith("-") ? args.shift() : null;
   } else if (parsed.command && !["exec", "chat", "help"].includes(parsed.command)) {
     args.unshift(parsed.command);
@@ -323,6 +362,19 @@ export function parseArgs(argv) {
           label: "--max-tool-iterations"
         });
         break;
+      case "--ui-port":
+        parsed.uiPort = parsePositiveIntegerOption(args.shift(), {
+          errors: parsed.errors,
+          label: "--ui-port"
+        });
+        break;
+      case "--ui-host":
+        parsed.uiHost = args.shift() ?? "";
+        break;
+      case "--expert-team":
+      case "--experts":
+        parsed.expertTeam = true;
+        break;
       case "--enable-hosted-tools":
         parsed.enableHostedTools = true;
         break;
@@ -408,10 +460,22 @@ export function parseArgs(argv) {
   return parsed;
 }
 
+/**
+ * 创建 create codex for cli 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} config - config 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function createCodexForCli(config, parsed) {
-  const modelClient = await createModelClientForCli(config);
+  const modelClient = await createModelClientForCli(config, parsed);
   const options = {
-    ...configToCodexOptions(config)
+    ...configToCodexOptions(config),
+    toolVisibility: {
+      expertTeam: parsed.expertTeam
+    }
   };
 
   if (modelClient) {
@@ -433,6 +497,14 @@ async function createCodexForCli(config, parsed) {
   return new Codex(options);
 }
 
+/**
+ * 创建 create tool runtime for cli 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createToolRuntimeForCli(config, parsed, options = {}) {
   const workingDirectory = config.workingDirectory ?? parsed.workingDirectory ?? process.cwd();
   const approvalGate = new CliApprovalGate({
@@ -513,10 +585,12 @@ function createToolRuntimeForCli(config, parsed, options = {}) {
     allowApplyPatchWrites: parsed.allowApplyPatch,
     includeHostedTools: config.tools?.hosted?.enabled ?? false,
     webSearchProvider,
-    imageGenerationProvider
+    imageGenerationProvider,
+    memoryStoreDirectory: config.memoryStoreDirectory ?? undefined
   });
 
   agentCoordinator.runner = async (agent) => {
+    const expertId = agent.metadata?.expert?.id ?? agent.metadata?.expert_id ?? null;
     const runtime = new LoopingTurnRuntime({
       modelClient: options.modelClient,
       toolRuntime,
@@ -525,6 +599,10 @@ function createToolRuntimeForCli(config, parsed, options = {}) {
     const codex = new Codex({
       workingDirectory,
       sessionStoreDirectory: config.sessionStoreDirectory ?? undefined,
+      memoryStoreDirectory: config.memoryStoreDirectory ?? undefined,
+      memory: {
+        expertId
+      },
       runtime,
       toolRegistry: toolRuntime.router
     });
@@ -541,16 +619,35 @@ function createToolRuntimeForCli(config, parsed, options = {}) {
   return toolRuntime;
 }
 
+/**
+ * 格式化 format sub agent prompt 相关数据。
+ *
+ * @param {unknown} agent - agent 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function formatSubAgentPrompt(agent) {
-  const context = agent.metadata?.context
-    ? `\nContext:\n${agent.metadata.context}`
-    : "";
-
-  return `Sub-agent task:\n${agent.task}${context}`;
+  return formatExpertAgentPrompt(agent);
 }
 
-async function createModelClientForCli(config) {
+/**
+ * 创建 create model client for cli 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
+async function createModelClientForCli(config, parsed = {}) {
   const provider = parsedProvider(config);
+  const modelOptions = parsed.expertTeam
+    ? {
+        ...config.model.options,
+        systemPrompt: mergeSystemPrompts(
+          config.model.options.systemPrompt ?? config.model.options.system_prompt,
+          expertTeamLeaderSystemPrompt()
+        )
+      }
+    : config.model.options;
 
   if (config.model.provider === "plugin" || config.model.adapterPath) {
     if (!config.model.adapterPath) {
@@ -559,7 +656,7 @@ async function createModelClientForCli(config) {
 
     return await createPluginModelClient({
       modulePath: resolve(config.model.adapterPath),
-      adapterOptions: config.model.options
+      adapterOptions: modelOptions
     });
   }
 
@@ -572,16 +669,16 @@ async function createModelClientForCli(config) {
       url: config.model.url,
       headers: config.model.headers,
       timeoutMs: config.model.timeoutMs,
-      sessionOptions: config.model.options
+      sessionOptions: modelOptions
     });
   }
 
   if (provider === "deepseek") {
     return createDeepSeekModelClient({
-      ...config.model.options,
-      apiKey: config.model.options.apiKey ?? config.model.options.api_key,
-      model: config.model.options.model ?? "deepseek-v4-pro",
-      baseUrl: config.model.options.baseUrl ?? config.model.options.base_url,
+      ...modelOptions,
+      apiKey: modelOptions.apiKey ?? modelOptions.api_key,
+      model: modelOptions.model ?? "deepseek-v4-pro",
+      baseUrl: modelOptions.baseUrl ?? modelOptions.base_url,
       headers: config.model.headers,
       timeoutMs: config.model.timeoutMs
     });
@@ -589,10 +686,10 @@ async function createModelClientForCli(config) {
 
   if (provider === "openai-compatible") {
     return createOpenAICompatibleModelClient({
-      ...config.model.options,
-      apiKey: config.model.options.apiKey ?? config.model.options.api_key,
-      model: config.model.options.model,
-      baseUrl: config.model.options.baseUrl ?? config.model.options.base_url,
+      ...modelOptions,
+      apiKey: modelOptions.apiKey ?? modelOptions.api_key,
+      model: modelOptions.model,
+      baseUrl: modelOptions.baseUrl ?? modelOptions.base_url,
       headers: config.model.headers,
       timeoutMs: config.model.timeoutMs
     });
@@ -601,10 +698,62 @@ async function createModelClientForCli(config) {
   return null;
 }
 
+/**
+ * 合并用户已有 system prompt 和专家团技术 Leader prompt。
+ *
+ * @param {unknown} basePrompt - 用户或配置里的 system prompt。
+ * @param {string} extraPrompt - 需要追加的专家团 prompt。
+ * @returns {string} 合并后的 system prompt。
+ */
+function mergeSystemPrompts(basePrompt, extraPrompt) {
+  return [
+    basePrompt ? String(basePrompt) : "",
+    extraPrompt
+  ].filter(Boolean).join("\n\n");
+}
+
+/**
+ * 生成专家团模式的技术 Leader 系统提示。
+ *
+ * 默认 chat/exec 不会使用这段提示，只有显式传入 --expert-team 或 --experts
+ * 时才启用。这里要求主模型先做调度，再让专家分工输出报告。
+ *
+ * @returns {string} 技术 Leader 系统提示。
+ */
+export function expertTeamLeaderSystemPrompt() {
+  return [
+    "你现在是技术 Leader，也是专家团调度员。只有当前会话显式启用了专家团模式，所以你必须用多专家协作完成复杂任务。",
+    "你的第一步是判断任务需要哪些专家。优先使用已有专家 id：architect、tester、frontend、security、performance、memory、tools、general。",
+    "如果任务需要新的专业角色，你可以在 plan_experts 的 custom_experts / customExperts 参数里动态创建专家。动态专家的 prompt 必须由你根据当前任务即时生成，不能依赖代码里的固定模板。每个动态专家必须包含 id、name、role、description、prompt、instructions、keywords。",
+    "动态专家 prompt 要完整描述该专家的专业边界、思考方式、输入假设、禁止事项、输出格式和本任务关注点。",
+    "专家团流程：先调用 plan_experts 生成专家计划，再按计划调用 spawn_agent 派出专家，再调用 wait_agent 等待专家结果，最后由你综合结论并执行必要修改。",
+    "每个专家都有自己的独立长期记忆。专家只能使用自己的专家私有记忆和共享 project/user 记忆；不同专家之间不得互相通信、不得互相读取私有记忆。",
+    "如果子专家报告里提出问题，你必须先作为技术 Leader 判断并补充上下文；只有你仍然拿不准、且会影响最终结果时，才向用户提一个明确问题。",
+    "禁止让子专家直接问用户。禁止让子专家联系其他子专家。所有跨专家协调只能由技术 Leader 完成。",
+    "不要把专家报告原样堆给用户。最终只输出中文摘要、关键文件路径、验证结果和需要用户知道的风险。",
+    "如果任务很小、不需要专家团，也要简短说明你作为技术 Leader 判断无需拆分，然后直接完成。"
+  ].join("\n");
+}
+
+/**
+ * 解析 parsed provider 相关数据。
+ *
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function parsedProvider(config) {
   return String(config.model.provider ?? "").toLowerCase();
 }
 
+/**
+ * 执行 run chat command 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function runChatCommand(parsed, io = {}) {
   const stdin = io.stdin;
   const stdout = io.stdout;
@@ -684,6 +833,17 @@ async function runChatCommand(parsed, io = {}) {
   return 0;
 }
 
+/**
+ * 执行 run chat prompt 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} thread - thread 参数。
+ * @param {unknown} prompt - prompt 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function runChatPrompt(thread, prompt, parsed, io = {}) {
   const streamed = await thread.runStreamed(prompt);
   await processEventStream(streamed.events, createExecEventProcessor({
@@ -693,6 +853,15 @@ async function runChatPrompt(thread, prompt, parsed, io = {}) {
   }));
 }
 
+/**
+ * 执行 run config command 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function runConfigCommand(parsed, io = {}) {
   const stdout = io.stdout;
 
@@ -714,6 +883,15 @@ async function runConfigCommand(parsed, io = {}) {
   }
 }
 
+/**
+ * 执行 run tools command 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function runToolsCommand(parsed, io = {}) {
   const stdout = io.stdout;
   const stderr = io.stderr;
@@ -767,6 +945,26 @@ async function runToolsCommand(parsed, io = {}) {
   }
 }
 
+/**
+ * 执行 run app server command 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
+async function runUiCommand(parsed, io = {}) {
+  await startCodexJsUiServer({
+    port: parsed.uiPort,
+    host: parsed.uiHost,
+    stdout: io.stdout
+  });
+
+  await new Promise(() => {});
+  return 0;
+}
+
 async function runAppServerCommand(parsed, io = {}) {
   const stdout = io.stdout;
 
@@ -818,6 +1016,15 @@ async function runAppServerCommand(parsed, io = {}) {
   }
 }
 
+/**
+ * 执行 run thread command 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function runThreadCommand(parsed, io = {}) {
   const stdout = io.stdout;
   const stderr = io.stderr;
@@ -919,6 +1126,16 @@ async function runThreadCommand(parsed, io = {}) {
   }
 }
 
+/**
+ * 执行 run thread id command 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} method - method 参数。
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function runThreadIdCommand(method, parsed, options = {}) {
   const threadId = parsed.threadId || parsed.prompt;
 
@@ -935,6 +1152,13 @@ async function runThreadIdCommand(method, parsed, options = {}) {
   return writeRpcResultOrError(response, options);
 }
 
+/**
+ * 写入 write rpc result or error 相关数据。
+ *
+ * @param {unknown} response - response 参数。
+ * @param {unknown} io - io 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function writeRpcResultOrError(response, io = {}) {
   if (response.error) {
     io.stderr.write(`${response.error.message}\n`);
@@ -945,6 +1169,10 @@ function writeRpcResultOrError(response, io = {}) {
   return 0;
 }
 
+/**
+ * 处理 help text 相关逻辑。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function helpText() {
   return `codex-js
 
@@ -957,6 +1185,7 @@ Usage:
   codex-js tools list
   codex-js tools inspect [--json]
   codex-js tools doctor [--json]
+  codex-js ui [--ui-port <port>]
   codex-js thread list [--archived]
   codex-js thread start
   codex-js thread read <thread-id>
@@ -992,6 +1221,8 @@ Options:
   --model-timeout <ms>   Set HTTP model adapter request timeout.
   --max-tool-iterations <n>
                          Maximum model/tool loop iterations before failing.
+  --ui-port <port>       Port for the browser UI. Default: 14518.
+  --ui-host <host>       Host for the browser UI. Default: 127.0.0.1.
   --enable-hosted-tools  Expose hosted web_search/image_generation tools.
   --web-search-url <url> POST web_search tool requests to an HTTP provider.
   --image-generation-url <url>
@@ -1032,6 +1263,10 @@ execution and patch writes require explicit tool flags.
 `;
 }
 
+/**
+ * 处理 chat help text 相关逻辑。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function chatHelpText() {
   return `Commands:
   /help       Show this help.
@@ -1041,6 +1276,12 @@ export function chatHelpText() {
 `;
 }
 
+/**
+ * 处理 package version 相关逻辑。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function packageVersion() {
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
   return packageJson.version;
@@ -1049,7 +1290,15 @@ async function packageVersion() {
 const chatExitCommands = new Set(["/exit", "/quit", ".exit", ".quit", "exit", "quit"]);
 const chatHelpCommands = new Set(["/help", ".help", "help"]);
 
+/**
+ * 定义 CliApprovalGate 类，封装当前模块的状态和行为。
+ */
 class CliApprovalGate {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.policy = options.policy ?? new ApprovalPolicy();
     this.stdin = options.stdin;
@@ -1058,6 +1307,14 @@ class CliApprovalGate {
     this.sessionApprovals = new Set();
   }
 
+  /**
+   * 处理 check 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async check(request) {
     const approval = this.policy.check(request);
 
@@ -1085,6 +1342,14 @@ class CliApprovalGate {
     };
   }
 
+  /**
+   * 处理 prompt for approval 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} approval - approval 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async promptForApproval(approval) {
     const request = approval.request;
 
@@ -1120,6 +1385,12 @@ class CliApprovalGate {
   }
 }
 
+/**
+ * 格式化 format approval prompt 相关数据。
+ *
+ * @param {unknown} request - request 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function formatApprovalPrompt(request) {
   const lines = [
     "",
@@ -1141,6 +1412,13 @@ function formatApprovalPrompt(request) {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * 解析 parse key value option 相关数据。
+ *
+ * @param {unknown} raw - raw 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function parseKeyValueOption(raw, options = {}) {
   if (!raw || !raw.includes("=")) {
     options.errors.push(`${options.label} requires KEY=VALUE.`);
@@ -1161,6 +1439,13 @@ function parseKeyValueOption(raw, options = {}) {
     : value;
 }
 
+/**
+ * 解析 parse json object option 相关数据。
+ *
+ * @param {unknown} raw - raw 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function parseJsonObjectOption(raw, options = {}) {
   if (!raw) {
     options.errors.push(`${options.label} requires a JSON object.`);
@@ -1181,6 +1466,13 @@ function parseJsonObjectOption(raw, options = {}) {
   }
 }
 
+/**
+ * 解析 parse positive integer option 相关数据。
+ *
+ * @param {unknown} raw - raw 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function parsePositiveIntegerOption(raw, options = {}) {
   const value = Number(raw);
 
@@ -1192,6 +1484,12 @@ function parsePositiveIntegerOption(raw, options = {}) {
   return Math.trunc(value);
 }
 
+/**
+ * 解析 parse loose json value 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function parseLooseJsonValue(value) {
   const trimmed = String(value ?? "").trim();
 

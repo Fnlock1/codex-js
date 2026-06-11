@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/turn-runtime.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { isAbsolute } from "node:path";
 import { test } from "node:test";
@@ -68,8 +73,18 @@ test("MockTurnRuntime emits a full mock turn lifecycle", async () => {
 test("MockTurnRuntime can use an injected model client", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             yield createModelResponseItem({ text: "chunk one" });
             yield createModelResponseItem({ text: " chunk two" });
@@ -105,8 +120,18 @@ test("MockTurnRuntime accepts MockModelClient injection", async () => {
 test("MockTurnRuntime emits reasoning items from model response items", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             yield createModelResponseItem({
               type: "reasoning",
@@ -140,8 +165,18 @@ test("MockTurnRuntime emits reasoning items from model response items", async ()
 test("MockTurnRuntime emits tool call item events without executing real tools", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             yield createModelResponseItem({
               type: "tool_call",
@@ -194,8 +229,18 @@ test("MockTurnRuntime emits tool call item events without executing real tools",
 test("MockTurnRuntime emits custom tool call output results", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             yield createModelResponseItem({
               type: "custom_tool_call",
@@ -208,6 +253,14 @@ test("MockTurnRuntime emits custom tool call output results", async () => {
       }
     },
     toolRuntime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       *
+       * @param {unknown} toolCall - toolCall 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run(toolCall) {
         return createToolCallResult({
           callId: toolCall.call_id,
@@ -239,8 +292,18 @@ test("MockTurnRuntime emits custom tool call output results", async () => {
 test("MockTurnRuntime can use an injected tool runtime", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             yield createModelResponseItem({
               type: "tool_call",
@@ -252,6 +315,14 @@ test("MockTurnRuntime can use an injected tool runtime", async () => {
       }
     },
     toolRuntime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       *
+       * @param {unknown} toolCall - toolCall 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run(toolCall) {
         return createToolCallResult({
           callId: toolCall.call_id,
@@ -286,8 +357,18 @@ test("MockTurnRuntime can use an injected tool runtime", async () => {
 test("MockTurnRuntime converts model errors into failed turn events", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             throw new Error("model unavailable");
           }
@@ -315,8 +396,18 @@ test("MockTurnRuntime converts model errors into failed turn events", async () =
 test("MockTurnRuntime converts tool runtime errors into failed turn events", async () => {
   const runtime = new MockTurnRuntime({
     modelClient: {
+      /**
+       * 创建 create session 相关数据。
+       * @returns {unknown} 返回处理后的结果。
+       */
       createSession() {
         return {
+          /**
+           * 处理 stream response 相关逻辑。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *streamResponse() {
             yield createModelResponseItem({
               type: "tool_call",
@@ -328,6 +419,12 @@ test("MockTurnRuntime converts tool runtime errors into failed turn events", asy
       }
     },
     toolRuntime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run() {
         throw new Error("tool unavailable");
       }
@@ -365,6 +462,14 @@ test("LoopingTurnRuntime feeds function call output back into the model", async 
   const runtime = new LoopingTurnRuntime({
     modelClient,
     toolRuntime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       *
+       * @param {unknown} toolCall - toolCall 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run(toolCall) {
         return createToolCallResult({
           callId: toolCall.call_id,
@@ -559,6 +664,14 @@ test("LoopingTurnRuntime feeds custom tool output back into the model", async ()
   const runtime = new LoopingTurnRuntime({
     modelClient,
     toolRuntime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       *
+       * @param {unknown} toolCall - toolCall 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run(toolCall) {
         return createToolCallResult({
           callId: toolCall.call_id,
@@ -608,6 +721,14 @@ test("LoopingTurnRuntime fails when max tool iterations are exceeded", async () 
       ]
     ]),
     toolRuntime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       *
+       * @param {unknown} toolCall - toolCall 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run(toolCall) {
         return createToolCallResult({
           callId: toolCall.call_id,

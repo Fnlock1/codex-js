@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/exec/runtime.js
+ *
+ * 命令执行、PTY 会话、输出事件和执行权限策略。
+ */
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { createExecToolCallOutput } from "../protocol/index.js";
@@ -8,13 +13,35 @@ export const EXEC_RUNTIME_ERRORS = Object.freeze({
   TIMED_OUT: "timed_out"
 });
 
+/**
+ * 定义 ExecRuntime 类，封装当前模块的状态和行为。
+ */
 export class ExecRuntime {
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _request - _request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(_request) {
     throw new Error("ExecRuntime.run() must be implemented by a subclass.");
   }
 }
 
+/**
+ * 定义 DryRunExecRuntime 类，封装当前模块的状态和行为。
+ */
 export class DryRunExecRuntime extends ExecRuntime {
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     return createExecResult({
       output: createExecToolCallOutput({
@@ -28,12 +55,28 @@ export class DryRunExecRuntime extends ExecRuntime {
   }
 }
 
+/**
+ * 定义 BlockedExecRuntime 类，封装当前模块的状态和行为。
+ */
 export class BlockedExecRuntime extends ExecRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.reason = options.reason ?? "not_allowed";
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     return blockedExecResult({
       decision: this.reason,
@@ -46,7 +89,15 @@ export class BlockedExecRuntime extends ExecRuntime {
   }
 }
 
+/**
+ * 定义 RealExecRuntime 类，封装当前模块的状态和行为。
+ */
 export class RealExecRuntime extends ExecRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 30_000;
@@ -56,6 +107,14 @@ export class RealExecRuntime extends ExecRuntime {
     this.allowedEnvKeys = normalizeEnvKeySet(options.allowedEnvKeys ?? options.allowed_env_keys ?? []);
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     const normalized = createExecRequest(request);
     const startedAt = Date.now();
@@ -136,6 +195,12 @@ export class RealExecRuntime extends ExecRuntime {
   }
 }
 
+/**
+ * 创建 create exec request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createExecRequest(options = {}) {
   const argv = normalizeExecArgv(options.argv ?? (
     Array.isArray(options.command) ? options.command : null
@@ -158,6 +223,12 @@ export function createExecRequest(options = {}) {
   return request;
 }
 
+/**
+ * 创建 create exec result 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createExecResult(options = {}) {
   return {
     output: options.output ?? createExecToolCallOutput(),
@@ -167,6 +238,12 @@ export function createExecResult(options = {}) {
   };
 }
 
+/**
+ * 处理 blocked exec result 相关逻辑。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function blockedExecResult({ decision, output }) {
   return createExecResult({
     output,
@@ -176,6 +253,13 @@ export function blockedExecResult({ decision, output }) {
   });
 }
 
+/**
+ * 处理 shell command for platform 相关逻辑。
+ *
+ * @param {unknown} command - command 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function shellCommandForPlatform(command, options = {}) {
   const platform = options.platform ?? process.platform;
 
@@ -200,6 +284,12 @@ export function shellCommandForPlatform(command, options = {}) {
   };
 }
 
+/**
+ * 处理 spawn command for request 相关逻辑。
+ *
+ * @param {unknown} request - request 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function spawnCommandForRequest(request) {
   if (Array.isArray(request.argv) && request.argv.length > 0) {
     return {
@@ -213,6 +303,13 @@ export function spawnCommandForRequest(request) {
   });
 }
 
+/**
+ * 归一化 normalize exec env 相关数据。
+ *
+ * @param {unknown} env - env 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeExecEnv(env, options = {}) {
   const blockedEnvKeys = normalizeEnvKeySet(options.blockedEnvKeys ?? options.blocked_env_keys ?? []);
   const allowedEnvKeys = normalizeEnvKeySet(options.allowedEnvKeys ?? options.allowed_env_keys ?? []);
@@ -239,6 +336,12 @@ export function normalizeExecEnv(env, options = {}) {
   return sanitizedBase;
 }
 
+/**
+ * 归一化 normalize exec argv 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeExecArgv(value) {
   if (value == null) {
     return null;
@@ -251,6 +354,13 @@ export function normalizeExecArgv(value) {
   return value.map((part) => String(part));
 }
 
+/**
+ * 解码 decode and clamp output 相关数据。
+ *
+ * @param {unknown} chunks - chunks 参数。
+ * @param {unknown} maxBytes - maxBytes 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function decodeAndClampOutput(chunks, maxBytes = 1_000_000) {
   const buffer = Buffer.concat(chunks);
 
@@ -261,16 +371,34 @@ export function decodeAndClampOutput(chunks, maxBytes = 1_000_000) {
   return buffer.subarray(0, maxBytes).toString("utf8");
 }
 
+/**
+ * 处理 signal to exit code 相关逻辑。
+ *
+ * @param {unknown} signal - signal 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function signalToExitCode(signal) {
   return signal ? 1 : 0;
 }
 
+/**
+ * 处理 clear timeout if needed 相关逻辑。
+ *
+ * @param {unknown} timeout - timeout 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clearTimeoutIfNeeded(timeout) {
   if (timeout) {
     clearTimeout(timeout);
   }
 }
 
+/**
+ * 处理 quote command display part 相关逻辑。
+ *
+ * @param {unknown} part - part 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function quoteCommandDisplayPart(part) {
   const text = String(part);
 
@@ -281,6 +409,12 @@ function quoteCommandDisplayPart(part) {
   return text;
 }
 
+/**
+ * 归一化 normalize env key set 相关数据。
+ *
+ * @param {unknown} keys - keys 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeEnvKeySet(keys) {
   if (keys instanceof Set) {
     return new Set(
@@ -297,6 +431,13 @@ function normalizeEnvKeySet(keys) {
   );
 }
 
+/**
+ * 处理 env key allowed 相关逻辑。
+ *
+ * @param {unknown} key - key 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function envKeyAllowed(key, options = {}) {
   const normalized = String(key).toUpperCase();
 

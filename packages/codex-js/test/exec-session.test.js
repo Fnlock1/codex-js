@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/exec-session.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -97,6 +102,12 @@ test("RealCommandSessionManager runs a process, writes stdin, and closes stdin",
   const deltas = [];
   const manager = new RealCommandSessionManager({
     defaultTimeoutMs: 5000,
+    /**
+     * 处理 on output delta 相关逻辑。
+     *
+     * @param {unknown} delta - delta 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onOutputDelta(delta) {
       deltas.push(delta);
     }
@@ -197,6 +208,16 @@ test("RealCommandSessionManager rejects duplicate active process ids", async () 
   ]);
 });
 
+/**
+ * 等待 wait for session status 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} manager - manager 参数。
+ * @param {unknown} sessionId - sessionId 参数。
+ * @param {unknown} statuses - statuses 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function waitForSessionStatus(manager, sessionId, statuses) {
   const wanted = new Set(statuses);
 

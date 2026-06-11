@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/server-requests.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import { randomUUID } from "node:crypto";
 import {
   APPROVAL_REVIEW_DECISIONS
@@ -25,7 +30,15 @@ export const SERVER_REQUEST_KINDS = Object.freeze({
   TOOL_USER_INPUT: "tool_user_input"
 });
 
+/**
+ * 定义 ServerRequestStore 类，封装当前模块的状态和行为。
+ */
 export class ServerRequestStore {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.pending = new Map();
     this.onRequest = options.onRequest ?? null;
@@ -33,6 +46,12 @@ export class ServerRequestStore {
     this.idFactory = options.idFactory ?? randomUUID;
   }
 
+  /**
+   * 创建 create 相关数据。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   create(options = {}) {
     const requestId = options.requestId ?? this.idFactory();
     const pending = {
@@ -58,6 +77,12 @@ export class ServerRequestStore {
     return pending;
   }
 
+  /**
+   * 列出 list 相关数据。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   list(options = {}) {
     const threadId = options.threadId ?? null;
     const requests = [...this.pending.values()]
@@ -69,10 +94,23 @@ export class ServerRequestStore {
     };
   }
 
+  /**
+   * 获取 get 相关数据。
+   *
+   * @param {unknown} requestId - requestId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   get(requestId) {
     return this.pending.get(String(requestId));
   }
 
+  /**
+   * 解析 resolve 相关数据。
+   *
+   * @param {unknown} requestId - requestId 参数。
+   * @param {unknown} response - response 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   resolve(requestId, response = {}) {
     const key = String(requestId);
     const pending = this.pending.get(key);
@@ -102,6 +140,12 @@ export class ServerRequestStore {
     };
   }
 
+  /**
+   * 处理 clear 相关逻辑。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   clear(options = {}) {
     const threadId = options.threadId ?? null;
     const cleared = [];
@@ -125,6 +169,12 @@ export class ServerRequestStore {
   }
 }
 
+/**
+ * 创建 create command execution approval server request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCommandExecutionApprovalServerRequest(options = {}) {
   const approval = options.approval ?? {};
   const request = approval.approvalRequest ?? approval.request ?? {};
@@ -164,6 +214,12 @@ export function createCommandExecutionApprovalServerRequest(options = {}) {
   };
 }
 
+/**
+ * 创建 create file change approval server request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createFileChangeApprovalServerRequest(options = {}) {
   const approval = options.approval ?? {};
   const request = approval.approvalRequest ?? approval.request ?? {};
@@ -197,6 +253,12 @@ export function createFileChangeApprovalServerRequest(options = {}) {
   };
 }
 
+/**
+ * 创建 create permissions approval server request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createPermissionsApprovalServerRequest(options = {}) {
   const approval = options.approval ?? null;
   const metadata = approval?.approvalRequest?.request?.metadata ?? approval?.request?.metadata ?? {};
@@ -221,6 +283,12 @@ export function createPermissionsApprovalServerRequest(options = {}) {
   };
 }
 
+/**
+ * 创建 create server request view 相关数据。
+ *
+ * @param {unknown} request - request 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createServerRequestView(request) {
   return {
     requestId: request.requestId,
@@ -234,6 +302,12 @@ export function createServerRequestView(request) {
   };
 }
 
+/**
+ * 处理 approval review decision from server response 相关逻辑。
+ *
+ * @param {unknown} response - response 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function approvalReviewDecisionFromServerResponse(response = {}) {
   const decision = response.decision ?? response.result?.decision ?? response;
 
@@ -266,6 +340,13 @@ export function approvalReviewDecisionFromServerResponse(response = {}) {
   return APPROVAL_REVIEW_DECISIONS.DENIED;
 }
 
+/**
+ * 处理 permissions response from server response 相关逻辑。
+ *
+ * @param {unknown} pending - pending 参数。
+ * @param {unknown} response - response 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function permissionsResponseFromServerResponse(pending, response = {}) {
   return createPermissionsResponseFromClientResult({
     requested: pending.params?.permissions ?? {},
@@ -274,6 +355,12 @@ export function permissionsResponseFromServerResponse(pending, response = {}) {
   });
 }
 
+/**
+ * 处理 omit nullish 相关逻辑。
+ *
+ * @param {unknown} object - object 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function omitNullish(object) {
   return Object.fromEntries(
     Object.entries(object).filter(([, value]) => value !== undefined)

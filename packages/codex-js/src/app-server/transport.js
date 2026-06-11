@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/transport.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import readline from "node:readline";
 import {
   APP_SERVER_ERROR_CODES,
@@ -5,12 +10,28 @@ import {
 } from "./protocol.js";
 import { createCodexAppServer } from "./server.js";
 
+/**
+ * 定义 InProcessAppServerTransport 类，封装当前模块的状态和行为。
+ */
 export class InProcessAppServerTransport {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.server = options.server ?? createCodexAppServer(options);
     this.sent = [];
   }
 
+  /**
+   * 处理 send 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} message - message 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async send(message) {
     const parsed = typeof message === "string" ? JSON.parse(message) : message;
     const response = await this.server.handle(parsed);
@@ -22,16 +43,34 @@ export class InProcessAppServerTransport {
     return response;
   }
 
+  /**
+   * 处理 notifications 相关逻辑。
+   * @returns {unknown} 返回处理后的结果。
+   */
   notifications() {
     return [...this.server.notifications];
   }
 }
 
+/**
+ * 创建 create in process app server transport 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createInProcessAppServerTransport(options = {}) {
   return new InProcessAppServerTransport(options);
 }
 
+/**
+ * 定义 StdioAppServerTransport 类，封装当前模块的状态和行为。
+ */
 export class StdioAppServerTransport {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.input = options.input ?? process.stdin;
     this.output = options.output ?? process.stdout;
@@ -67,6 +106,12 @@ export class StdioAppServerTransport {
     }
   }
 
+  /**
+   * 启动 start 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async start() {
     const lines = readline.createInterface({
       input: this.input,
@@ -79,6 +124,14 @@ export class StdioAppServerTransport {
     }
   }
 
+  /**
+   * 处理 handle line 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} line - line 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async handleLine(line) {
     const text = String(line ?? "").trim();
 
@@ -109,21 +162,43 @@ export class StdioAppServerTransport {
     return response;
   }
 
+  /**
+   * 写入 write message 相关数据。
+   *
+   * @param {unknown} message - message 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   writeMessage(message) {
     const normalized = normalizeWireMessage(message);
     this.sent.push(normalized);
     this.output.write(`${JSON.stringify(normalized)}\n`);
   }
 
+  /**
+   * 处理 notifications 相关逻辑。
+   * @returns {unknown} 返回处理后的结果。
+   */
   notifications() {
     return [...this.server.notifications];
   }
 }
 
+/**
+ * 创建 create stdio app server transport 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createStdioAppServerTransport(options = {}) {
   return new StdioAppServerTransport(options);
 }
 
+/**
+ * 归一化 normalize wire message 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeWireMessage(message) {
   if (!message || typeof message !== "object") {
     return message;

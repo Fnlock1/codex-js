@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/approval/policy.js
+ *
+ * 高风险操作的审批策略和审批结果建模。
+ */
 import { randomUUID } from "node:crypto";
 
 export const APPROVAL_RESOURCE_TYPES = Object.freeze({
@@ -25,13 +30,27 @@ export const APPROVAL_REVIEW_DECISIONS = Object.freeze({
   ABORT: "abort"
 });
 
+/**
+ * 定义 ApprovalPolicy 类，封装当前模块的状态和行为。
+ */
 export class ApprovalPolicy {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.rules = normalizeApprovalRules(options.rules ?? []);
     this.defaultDecision = options.defaultDecision ?? APPROVAL_DECISIONS.PROMPT;
     this.sessionApprovals = new Set(options.sessionApprovals ?? []);
   }
 
+  /**
+   * 处理 check 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   check(request) {
     const normalized = normalizeApprovalRequest(request);
     const sessionKey = approvalSessionKey(normalized);
@@ -57,6 +76,13 @@ export class ApprovalPolicy {
     });
   }
 
+  /**
+   * 处理 review 相关逻辑。
+   *
+   * @param {unknown} approvalRequest - approvalRequest 参数。
+   * @param {unknown} decision - decision 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   review(approvalRequest, decision) {
     const normalizedDecision = String(decision ?? "");
 
@@ -84,6 +110,12 @@ export class ApprovalPolicy {
     };
   }
 
+  /**
+   * 处理 approve for session 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   approveForSession(request) {
     const normalized = normalizeApprovalRequest(request);
     this.sessionApprovals.add(approvalSessionKey(normalized));
@@ -92,24 +124,57 @@ export class ApprovalPolicy {
   }
 }
 
+/**
+ * 定义 ApprovalGate 类，封装当前模块的状态和行为。
+ */
 export class ApprovalGate {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.policy = options.policy ?? new ApprovalPolicy(options);
   }
 
+  /**
+   * 处理 check 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   check(request) {
     return this.policy.check(request);
   }
 
+  /**
+   * 处理 review 相关逻辑。
+   *
+   * @param {unknown} approvalRequest - approvalRequest 参数。
+   * @param {unknown} decision - decision 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   review(approvalRequest, decision) {
     return this.policy.review(approvalRequest, decision);
   }
 
+  /**
+   * 处理 approve for session 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   approveForSession(request) {
     return this.policy.approveForSession(request);
   }
 }
 
+/**
+ * 创建 create approval request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApprovalRequest(options = {}) {
   const request = normalizeApprovalRequest(options.request ?? options);
 
@@ -135,6 +200,12 @@ export function createApprovalRequest(options = {}) {
   };
 }
 
+/**
+ * 创建 create approval result 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApprovalResult(options = {}) {
   const request = normalizeApprovalRequest(options.request);
   const decision = options.decision ?? APPROVAL_DECISIONS.PROMPT;
@@ -151,6 +222,12 @@ export function createApprovalResult(options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize approval request 相关数据。
+ *
+ * @param {unknown} request - request 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeApprovalRequest(request = {}) {
   return {
     resource_type: String(request.resourceType ?? request.resource_type ?? APPROVAL_RESOURCE_TYPES.TOOL),
@@ -161,6 +238,12 @@ export function normalizeApprovalRequest(request = {}) {
   };
 }
 
+/**
+ * 处理 approval session key 相关逻辑。
+ *
+ * @param {unknown} request - request 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function approvalSessionKey(request) {
   const normalized = normalizeApprovalRequest(request);
   return [
@@ -170,6 +253,12 @@ export function approvalSessionKey(request) {
   ].join("\u001f");
 }
 
+/**
+ * 归一化 normalize approval rules 相关数据。
+ *
+ * @param {unknown} rules - rules 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeApprovalRules(rules) {
   return rules.map((rule) => ({
     resource_type: rule.resourceType ?? rule.resource_type ?? null,
@@ -181,10 +270,24 @@ function normalizeApprovalRules(rules) {
   }));
 }
 
+/**
+ * 处理 first matching approval rule 相关逻辑。
+ *
+ * @param {unknown} request - request 参数。
+ * @param {unknown} rules - rules 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function firstMatchingApprovalRule(request, rules) {
   return rules.find((rule) => approvalRuleMatches(request, rule)) ?? null;
 }
 
+/**
+ * 处理 approval rule matches 相关逻辑。
+ *
+ * @param {unknown} request - request 参数。
+ * @param {unknown} rule - rule 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function approvalRuleMatches(request, rule) {
   if (rule.resource_type && rule.resource_type !== request.resource_type) {
     return false;

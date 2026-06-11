@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/apply-patch/parser.js
+ *
+ * 解析、规划和执行 apply_patch 文件补丁。
+ */
 export const APPLY_PATCH_MARKERS = Object.freeze({
   BEGIN: "*** Begin Patch",
   END: "*** End Patch",
@@ -15,7 +20,16 @@ export const APPLY_PATCH_HUNK_TYPES = Object.freeze({
   UPDATE_FILE: "update_file"
 });
 
+/**
+ * 定义 ApplyPatchParseError 类，封装当前模块的状态和行为。
+ */
 export class ApplyPatchParseError extends Error {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} message - message 参数。
+   * @param {unknown} lineNumber - lineNumber 参数。
+   */
   constructor(message, lineNumber = null) {
     super(lineNumber == null ? message : `${message} at line ${lineNumber}`);
     this.name = "ApplyPatchParseError";
@@ -24,10 +38,23 @@ export class ApplyPatchParseError extends Error {
   }
 }
 
+/**
+ * 创建 create apply patch parse error 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @param {unknown} lineNumber - lineNumber 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchParseError(message, lineNumber = null) {
   return new ApplyPatchParseError(message, lineNumber);
 }
 
+/**
+ * 解析 parse apply patch 相关数据。
+ *
+ * @param {unknown} patchText - patchText 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function parseApplyPatch(patchText) {
   const patch = normalizeApplyPatchText(patchText);
   const lines = patch.split(/\r?\n/);
@@ -68,6 +95,12 @@ export function parseApplyPatch(patchText) {
   };
 }
 
+/**
+ * 归一化 normalize apply patch text 相关数据。
+ *
+ * @param {unknown} patchText - patchText 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeApplyPatchText(patchText) {
   const text = String(patchText ?? "").trim();
   const lines = text.split(/\r?\n/);
@@ -85,6 +118,12 @@ export function normalizeApplyPatchText(patchText) {
   return normalizeLenientCreateFilePatch(lines) ?? text;
 }
 
+/**
+ * 归一化 normalize lenient create file patch 相关数据。
+ *
+ * @param {unknown} lines - lines 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeLenientCreateFilePatch(lines) {
   if (lines[0]?.trim() !== APPLY_PATCH_MARKERS.BEGIN) {
     return null;
@@ -135,6 +174,12 @@ function normalizeLenientCreateFilePatch(lines) {
   ].join("\n");
 }
 
+/**
+ * 处理 lenient create file path 相关逻辑。
+ *
+ * @param {unknown} line - line 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function lenientCreateFilePath(line) {
   const match = String(line ?? "").trim().match(
     /^(?:create|add|new)\s+(?:a\s+)?(?:new\s+)?file\s*:\s*(.+)$/iu
@@ -147,6 +192,12 @@ function lenientCreateFilePath(line) {
   return unquoteLenientPath(match[1].trim());
 }
 
+/**
+ * 处理 unquote lenient path 相关逻辑。
+ *
+ * @param {unknown} path - path 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function unquoteLenientPath(path) {
   const text = String(path ?? "").trim();
 
@@ -160,10 +211,22 @@ function unquoteLenientPath(path) {
   return text;
 }
 
+/**
+ * 处理 lenient content marker 相关逻辑。
+ *
+ * @param {unknown} line - line 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function lenientContentMarker(line) {
   return /^(?:replace\s+content|content)\s*:\s*$/iu.test(String(line ?? "").trim());
 }
 
+/**
+ * 判断是否为 is lenient create file terminator 相关数据。
+ *
+ * @param {unknown} trimmedLine - trimmedLine 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isLenientCreateFileTerminator(trimmedLine) {
   return (
     trimmedLine === "EOF" ||
@@ -172,6 +235,13 @@ function isLenientCreateFileTerminator(trimmedLine) {
   );
 }
 
+/**
+ * 解析 parse apply patch hunks 相关数据。
+ *
+ * @param {unknown} lines - lines 参数。
+ * @param {unknown} startingLineNumber - startingLineNumber 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function parseApplyPatchHunks(lines, startingLineNumber = 1) {
   const hunks = [];
   let index = 0;
@@ -313,6 +383,12 @@ export function parseApplyPatchHunks(lines, startingLineNumber = 1) {
   return hunks;
 }
 
+/**
+ * 判断是否为 is update chunk line 相关数据。
+ *
+ * @param {unknown} line - line 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isUpdateChunkLine(line) {
   if (line == null) {
     return false;
@@ -327,6 +403,12 @@ function isUpdateChunkLine(line) {
   );
 }
 
+/**
+ * 判断是否为 is content line 相关数据。
+ *
+ * @param {unknown} line - line 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isContentLine(line) {
   return typeof line === "string" && (
     line.startsWith("+") ||
@@ -335,12 +417,24 @@ function isContentLine(line) {
   );
 }
 
+/**
+ * 处理 files for hunks 相关逻辑。
+ *
+ * @param {unknown} hunks - hunks 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function filesForHunks(hunks) {
   return Array.from(new Set(hunks.flatMap((hunk) => (
     hunk.movePath ? [hunk.path, hunk.movePath] : [hunk.path]
   ))));
 }
 
+/**
+ * 处理 summarize parsed hunks 相关逻辑。
+ *
+ * @param {unknown} hunks - hunks 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function summarizeParsedHunks(hunks) {
   const summary = {
     add: 0,

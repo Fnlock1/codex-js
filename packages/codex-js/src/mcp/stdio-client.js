@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/mcp/stdio-client.js
+ *
+ * MCP 客户端、stdio 连接、协议转换和运行时封装。
+ */
 import { spawn } from "node:child_process";
 import readline from "node:readline";
 import { McpClient, createMcpClientError } from "./client.js";
@@ -11,7 +16,15 @@ import {
   normalizeMcpTool
 } from "./protocol.js";
 
+/**
+ * 定义 StdioMcpClient 类，封装当前模块的状态和行为。
+ */
 export class StdioMcpClient extends McpClient {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.server = normalizeStdioMcpServer(options.server ?? options);
@@ -30,6 +43,12 @@ export class StdioMcpClient extends McpClient {
     this.stderr = "";
   }
 
+  /**
+   * 处理 connect 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async connect() {
     if (this.connected) {
       return this.serverInfo;
@@ -104,6 +123,12 @@ export class StdioMcpClient extends McpClient {
     return this.serverInfo;
   }
 
+  /**
+   * 处理 close 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async close() {
     this.connected = false;
     this.initialized = false;
@@ -118,11 +143,23 @@ export class StdioMcpClient extends McpClient {
     this.rejectAll(createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP stdio client closed."));
   }
 
+  /**
+   * 列出 list servers 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listServers() {
     await this.ensureConnected();
     return [this.serverInfo];
   }
 
+  /**
+   * 列出 list tools 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listTools() {
     await this.ensureConnected();
     const response = await this.request("tools/list", {});
@@ -130,6 +167,14 @@ export class StdioMcpClient extends McpClient {
     return this.tools;
   }
 
+  /**
+   * 处理 call tool 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async callTool(request = {}) {
     await this.ensureConnected();
     const response = await this.request("tools/call", {
@@ -140,6 +185,12 @@ export class StdioMcpClient extends McpClient {
     return createMcpCallToolResult(response);
   }
 
+  /**
+   * 列出 list resources 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResources() {
     await this.ensureConnected();
     const response = await this.request("resources/list", {});
@@ -152,6 +203,12 @@ export class StdioMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 列出 list resource templates 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResourceTemplates() {
     await this.ensureConnected();
     const response = await this.request("resources/templates/list", {});
@@ -165,6 +222,14 @@ export class StdioMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 读取 read resource 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async readResource(request = {}) {
     await this.ensureConnected();
     const uri = String(request.uri ?? "");
@@ -179,12 +244,28 @@ export class StdioMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 处理 ensure connected 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async ensureConnected() {
     if (!this.connected || !this.initialized) {
       await this.connect();
     }
   }
 
+  /**
+   * 处理 request 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} method - method 参数。
+   * @param {unknown} params - params 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async request(method, params = {}, options = {}) {
     if (!this.process?.stdin?.writable) {
       throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP stdio client is not connected.");
@@ -218,6 +299,13 @@ export class StdioMcpClient extends McpClient {
     return await promise;
   }
 
+  /**
+   * 处理 notify 相关逻辑。
+   *
+   * @param {unknown} method - method 参数。
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   notify(method, params = {}) {
     if (!this.process?.stdin?.writable) {
       return;
@@ -230,6 +318,12 @@ export class StdioMcpClient extends McpClient {
     })}\n`);
   }
 
+  /**
+   * 处理 handle line 相关逻辑。
+   *
+   * @param {unknown} line - line 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   handleLine(line) {
     const text = String(line ?? "").trim();
 
@@ -273,6 +367,12 @@ export class StdioMcpClient extends McpClient {
     pending.resolve(message.result ?? {});
   }
 
+  /**
+   * 处理 reject all 相关逻辑。
+   *
+   * @param {unknown} error - error 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   rejectAll(error) {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
@@ -283,10 +383,22 @@ export class StdioMcpClient extends McpClient {
   }
 }
 
+/**
+ * 创建 create stdio mcp client 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createStdioMcpClient(options = {}) {
   return new StdioMcpClient(options);
 }
 
+/**
+ * 归一化 normalize stdio mcp server 相关数据。
+ *
+ * @param {unknown} server - server 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeStdioMcpServer(server = {}) {
   const config = server.config ?? server;
   const name = server.info?.name ?? server.name ?? config.name ?? "stdio";
@@ -305,6 +417,13 @@ export function normalizeStdioMcpServer(server = {}) {
   };
 }
 
+/**
+ * 归一化 normalize positive integer 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @param {unknown} fallback - fallback 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizePositiveInteger(value, fallback) {
   const number = Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : fallback;

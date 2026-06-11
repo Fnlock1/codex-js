@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/app-server.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -83,6 +88,12 @@ test("app-server starts threads and streams turn notifications", async () => {
         sessionStoreDirectory,
         mockResponse: "done"
       }),
+      /**
+       * 处理 on notification 相关逻辑。
+       *
+       * @param {unknown} notification - notification 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onNotification(notification) {
         notifications.push(notification);
       }
@@ -144,6 +155,12 @@ test("app-server starts threads and streams turn notifications", async () => {
 test("app-server command/exec emits dry-run command notifications", async () => {
   const notifications = [];
   const server = new CodexAppServer({
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -165,6 +182,12 @@ test("app-server command/exec emits dry-run command notifications", async () => 
 test("app-server command/exec can create a session and write stdin", async () => {
   const notifications = [];
   const server = new CodexAppServer({
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -211,6 +234,12 @@ test("app-server command/exec can use an injected real command session manager",
     commandSessionManager: new RealCommandSessionManager({
       defaultTimeoutMs: 5000
     }),
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -518,6 +547,9 @@ test("app-server fs methods honor sandbox and approval gates", async () => {
     assert.equal(approvalBlocked.error.code, APP_SERVER_ERROR_CODES.INVALID_PARAMS);
     assert.equal(approvalBlocked.error.data.reason, "approval_required");
     assert.equal(approvalBlocked.error.data.approval.approvalRequest.resource_type, "tool");
+    assert.equal(approvalBlocked.error.data.capability.resource, "tool");
+    assert.equal(approvalBlocked.error.data.capability.action, "write");
+    assert.equal(approvalBlocked.error.data.capability.metadata.source, "app-server-fs");
   } finally {
     await rm(dir, {
       recursive: true,
@@ -538,6 +570,12 @@ test("app-server fs/watch emits fs/changed notifications and fs/unwatch closes i
         mode: SANDBOX_MODES.READ_ONLY,
         workingDirectory: dir
       }),
+      /**
+       * 处理 on notification 相关逻辑。
+       *
+       * @param {unknown} notification - notification 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onNotification(notification) {
         notifications.push(notification);
       }
@@ -650,6 +688,44 @@ test("app-server process APIs require experimentalApi and are blocked by default
   assert.equal(blocked.error.data.reason, "blocked");
 });
 
+test("app-server process spawn records capability approval blocks", async () => {
+  let spawned = false;
+  const server = new CodexAppServer({
+    processRuntime: {
+      async spawn() {
+        spawned = true;
+        return {};
+      }
+    },
+    approvalGate: new ApprovalGate({
+      policy: new ApprovalPolicy({
+        defaultDecision: APPROVAL_DECISIONS.PROMPT
+      })
+    })
+  });
+
+  await server.handle(createRpcRequest(APP_SERVER_METHODS.INITIALIZE, {
+    capabilities: {
+      experimentalApi: true
+    }
+  }, 1));
+
+  const blocked = await server.handle(createRpcRequest(APP_SERVER_METHODS.PROCESS_SPAWN, {
+    command: [process.execPath, "-e", "console.log('hi')"],
+    processHandle: "approval-process-1",
+    cwd: tmpdir()
+  }, 2));
+
+  assert.equal(spawned, false);
+  assert.equal(blocked.error.code, APP_SERVER_ERROR_CODES.INVALID_PARAMS);
+  assert.equal(blocked.error.data.reason, "approval_required");
+  assert.equal(blocked.error.data.approval.approvalRequest.resource_type, "exec");
+  assert.equal(blocked.error.data.capability.resource, "exec");
+  assert.equal(blocked.error.data.capability.action, "execute");
+  assert.equal(blocked.error.data.capability.metadata.source, "app-server-process");
+  assert.equal(blocked.error.data.serverRequest.method, "item/commandExecution/requestApproval");
+});
+
 test("app-server process APIs spawn real processes with output and exit notifications when injected", async () => {
   const notifications = [];
   const runtime = new RealProcessRuntime({
@@ -657,6 +733,12 @@ test("app-server process APIs spawn real processes with output and exit notifica
   });
   const server = new CodexAppServer({
     processRuntime: runtime,
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -714,6 +796,12 @@ test("app-server process APIs reject duplicate handles and support resize and ki
   });
   const server = new CodexAppServer({
     processRuntime: runtime,
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -824,6 +912,12 @@ test("app-server manages stored threads from disk", async () => {
 
     const server = new CodexAppServer({
       codex,
+      /**
+       * 处理 on notification 相关逻辑。
+       *
+       * @param {unknown} notification - notification 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onNotification(notification) {
         notifications.push(notification);
       }
@@ -890,6 +984,12 @@ test("app-server lists loaded threads and sets thread names", async () => {
         sessionStoreDirectory,
         mockResponse: "done"
       }),
+      /**
+       * 处理 on notification 相关逻辑。
+       *
+       * @param {unknown} notification - notification 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onNotification(notification) {
         notifications.push(notification);
       }
@@ -934,6 +1034,12 @@ test("app-server lists loaded threads and sets thread names", async () => {
 test("app-server turn steer and interrupt operate on active turn control records", async () => {
   const notifications = [];
   const server = new CodexAppServer({
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -1049,6 +1155,14 @@ test("app-server thread/inject_items persists raw response items for the next tu
       codex: new Codex({
         sessionStoreDirectory,
         runtime: {
+          /**
+           * 执行一轮 agent turn 并按事件流产出进度。
+           *
+           * 这是异步生成器，会按需产出事件或结果。
+           *
+           * @param {unknown} context - context 参数。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async *runTurn(context) {
             contexts.push(context.toJSON());
             yield createItemCompletedEvent(createAssistantMessageItem(`turn ${contexts.length}`, {
@@ -1121,6 +1235,12 @@ test("app-server stores thread goals and emits goal notifications", async () => 
         sessionStoreDirectory,
         mockResponse: "done"
       }),
+      /**
+       * 处理 on notification 相关逻辑。
+       *
+       * @param {unknown} notification - notification 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onNotification(notification) {
         notifications.push(notification);
       }
@@ -1619,9 +1739,21 @@ test("app-server command approval creates server requests and resolves them", as
         defaultDecision: APPROVAL_DECISIONS.PROMPT
       })
     }),
+    /**
+     * 处理 on server request 相关逻辑。
+     *
+     * @param {unknown} request - request 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onServerRequest(request) {
       serverRequests.push(request);
     },
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -1681,9 +1813,21 @@ test("app-server fs approval creates file-change requests and accepts JSON-RPC r
           defaultDecision: APPROVAL_DECISIONS.PROMPT
         })
       }),
+      /**
+       * 处理 on server request 相关逻辑。
+       *
+       * @param {unknown} request - request 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onServerRequest(request) {
         serverRequests.push(request);
       },
+      /**
+       * 处理 on notification 相关逻辑。
+       *
+       * @param {unknown} notification - notification 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onNotification(notification) {
         notifications.push(notification);
       }
@@ -1734,10 +1878,22 @@ test("app-server resolves permissions approval requests and records granted subs
   const server = new CodexAppServer({
     permissionGrantStore,
     serverRequestStore: new ServerRequestStore({
+      /**
+       * 处理 on request 相关逻辑。
+       *
+       * @param {unknown} request - request 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       onRequest(request) {
         serverRequests.push(request);
       }
     }),
+    /**
+     * 处理 on notification 相关逻辑。
+     *
+     * @param {unknown} notification - notification 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onNotification(notification) {
       notifications.push(notification);
     }
@@ -1800,6 +1956,16 @@ test("app-server resolves permissions approval requests and records granted subs
   });
 });
 
+/**
+ * 等待 wait for app server session output 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} server - server 参数。
+ * @param {unknown} sessionId - sessionId 参数。
+ * @param {unknown} pattern - pattern 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function waitForAppServerSessionOutput(server, sessionId, pattern) {
   for (let index = 0; index < 50; index += 1) {
     const session = server.commandSessionManager.get(sessionId);
@@ -1820,6 +1986,15 @@ async function waitForAppServerSessionOutput(server, sessionId, pattern) {
   throw new Error(`session ${sessionId} did not produce expected output`);
 }
 
+/**
+ * 等待 wait for notification 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} notifications - notifications 参数。
+ * @param {unknown} method - method 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function waitForNotification(notifications, method) {
   for (let index = 0; index < 50; index += 1) {
     const notification = notifications.find((entry) => entry.method === method);
@@ -1834,9 +2009,19 @@ async function waitForNotification(notifications, method) {
   throw new Error(`notification not received: ${method}`);
 }
 
+/**
+ * 创建 create writable capture 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createWritableCapture() {
   return {
     text: "",
+    /**
+     * 写入 write 相关数据。
+     *
+     * @param {unknown} chunk - chunk 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     write(chunk) {
       this.text += String(chunk);
       return true;

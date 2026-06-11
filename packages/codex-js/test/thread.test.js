@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/thread.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -64,6 +69,14 @@ test("thread passes persisted response input items into the next turn", async ()
     const codex = new Codex({
       sessionStoreDirectory,
       runtime: {
+        /**
+         * 执行一轮 agent turn 并按事件流产出进度。
+         *
+         * 这是异步生成器，会按需产出事件或结果。
+         *
+         * @param {unknown} context - context 参数。
+         * @returns {unknown} 返回处理后的结果。
+         */
         async *runTurn(context) {
           contexts.push(context.toJSON());
           yield createItemCompletedEvent(createAssistantMessageItem(`turn ${contexts.length}`, {
@@ -95,6 +108,14 @@ test("thread.injectResponseItems appends raw model-visible history", async () =>
     const codex = new Codex({
       sessionStoreDirectory,
       runtime: {
+        /**
+         * 执行一轮 agent turn 并按事件流产出进度。
+         *
+         * 这是异步生成器，会按需产出事件或结果。
+         *
+         * @param {unknown} context - context 参数。
+         * @returns {unknown} 返回处理后的结果。
+         */
         async *runTurn(context) {
           contexts.push(context.toJSON());
           yield createItemCompletedEvent(createAssistantMessageItem("done", {
@@ -184,6 +205,12 @@ test("thread.run returns failed result metadata when a turn fails", async () => 
     const codex = new Codex({
       sessionStoreDirectory,
       runtime: {
+        /**
+         * 执行一轮 agent turn 并按事件流产出进度。
+         *
+         * 这是异步生成器，会按需产出事件或结果。
+         * @returns {unknown} 返回处理后的结果。
+         */
         async *runTurn() {
           yield {
             type: "thread.started",

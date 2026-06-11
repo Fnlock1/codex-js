@@ -5,6 +5,9 @@ OpenAI Codex CLI runtime. It is designed as an independent CLI/runtime package:
 it does not depend on the Qoder Open desktop editor, does not read `.env` files,
 and does not lock you into a single model provider.
 
+See [OPERATING_MODEL.md](./OPERATING_MODEL.md) for the package boundary,
+default safety posture, and validation commands.
+
 The project goal is practical: provide a terminal-first coding agent runtime
 that can run with different model vendors, expose local tools through a guarded
 tool loop, stream Codex-style events, and keep risky operations behind explicit

@@ -1,9 +1,15 @@
+/**
+ * 中文模块说明：src/tools/runtime.js
+ *
+ * 工具调用运行时，组合内置工具、审批、sandbox、MCP 和子 agent。
+ */
 import {
   APPROVAL_ACTIONS,
   APPROVAL_RESOURCE_TYPES
 } from "../approval/policy.js";
 import { ExecRunner } from "../exec/runner.js";
 import { CommandSessionManager } from "../exec/session.js";
+import { MemoryStore } from "../memory/store.js";
 import {
   createBuiltinToolDefinitions
 } from "./builtins.js";
@@ -13,8 +19,10 @@ import {
   GoalToolHandler,
   HostedProviderToolHandler,
   InMemoryGoalStore,
+  MemoryToolHandler,
   McpResourceToolHandler,
   PlaceholderToolHandler,
+  PlanExpertsToolHandler,
   RequestPermissionsToolHandler,
   ShellCommandToolHandler,
   SpawnAgentToolHandler,
@@ -60,20 +68,48 @@ export const BUILTIN_TOOL_NAMES = Object.freeze({
   LIST_MCP_RESOURCES: "list_mcp_resources",
   LIST_MCP_RESOURCE_TEMPLATES: "list_mcp_resource_templates",
   READ_MCP_RESOURCE: "read_mcp_resource",
+  PLAN_EXPERTS: "plan_experts",
   SPAWN_AGENT: "spawn_agent",
   WAIT_AGENT: "wait_agent",
   GET_GOAL: "get_goal",
   CREATE_GOAL: "create_goal",
-  UPDATE_GOAL: "update_goal"
+  UPDATE_GOAL: "update_goal",
+  REMEMBER: "remember",
+  RECALL_MEMORY: "recall_memory",
+  FORGET_MEMORY: "forget_memory",
+  LIST_MEMORIES: "list_memories"
 });
 
+/**
+ * 定义 ToolCallRuntime 类，封装当前模块的状态和行为。
+ */
 export class ToolCallRuntime {
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _toolCall - _toolCall 参数。
+   * @param {unknown} _context - _context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(_toolCall, _context = {}) {
     throw new Error("ToolCallRuntime.run() must be implemented by a subclass.");
   }
 }
 
+/**
+ * 定义 NoopToolCallRuntime 类，封装当前模块的状态和行为。
+ */
 export class NoopToolCallRuntime extends ToolCallRuntime {
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} toolCall - toolCall 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(toolCall) {
     return createToolCallResult({
       callId: toolCall.call_id ?? toolCall.callId,
@@ -85,7 +121,18 @@ export class NoopToolCallRuntime extends ToolCallRuntime {
   }
 }
 
+/**
+ * 安全工具运行时。
+ *
+ * 它集中装配内置工具、工具 handler、审批 gate、sandbox policy、
+ * MCP runtime、子 agent 协调器和 goal store，是模型 tool call 真正落地的入口。
+ */
 export class SafeToolCallRuntime extends ToolCallRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.allowApplyPatch = options.allowApplyPatch ?? false;
@@ -103,6 +150,9 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
     this.mcpRuntime = options.mcpRuntime ?? null;
     this.agentCoordinator = options.agentCoordinator ?? new AgentCoordinator();
     this.goalStore = options.goalStore ?? new InMemoryGoalStore();
+    this.memoryStore = options.memoryStore ?? new MemoryStore({
+      memoryStoreDirectory: options.memoryStoreDirectory
+    });
     this.workingDirectory = options.workingDirectory;
     const placeholderHandler = options.placeholderHandler ?? new PlaceholderToolHandler();
     this.router = options.router ?? new ToolRouter({
@@ -187,8 +237,12 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
             workingDirectory: options.workingDirectory
           }),
           toolSearchHandler: options.toolSearchHandler ?? new ToolSearchToolHandler(),
+          planExpertsHandler: options.planExpertsHandler ?? new PlanExpertsToolHandler({
+            expertProfiles: options.expertProfiles
+          }),
           spawnAgentHandler: options.spawnAgentHandler ?? new SpawnAgentToolHandler({
-            agentCoordinator: this.agentCoordinator
+            agentCoordinator: this.agentCoordinator,
+            expertProfiles: options.expertProfiles
           }),
           waitAgentHandler: options.waitAgentHandler ?? new WaitAgentToolHandler({
             agentCoordinator: this.agentCoordinator
@@ -204,6 +258,22 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
           updateGoalHandler: options.updateGoalHandler ?? new GoalToolHandler({
             goalStore: this.goalStore,
             kind: BUILTIN_TOOL_NAMES.UPDATE_GOAL
+          }),
+          rememberHandler: options.rememberHandler ?? new MemoryToolHandler({
+            memoryStore: this.memoryStore,
+            kind: BUILTIN_TOOL_NAMES.REMEMBER
+          }),
+          recallMemoryHandler: options.recallMemoryHandler ?? new MemoryToolHandler({
+            memoryStore: this.memoryStore,
+            kind: BUILTIN_TOOL_NAMES.RECALL_MEMORY
+          }),
+          forgetMemoryHandler: options.forgetMemoryHandler ?? new MemoryToolHandler({
+            memoryStore: this.memoryStore,
+            kind: BUILTIN_TOOL_NAMES.FORGET_MEMORY
+          }),
+          listMemoriesHandler: options.listMemoriesHandler ?? new MemoryToolHandler({
+            memoryStore: this.memoryStore,
+            kind: BUILTIN_TOOL_NAMES.LIST_MEMORIES
           }),
           webSearchHandler: options.webSearchHandler ?? new HostedProviderToolHandler({
             provider: options.webSearchProvider,
@@ -221,10 +291,28 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
     });
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} toolCall - toolCall 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(toolCall, context = {}) {
     return await this.router.run(toolCall, context);
   }
 
+  /**
+   * 执行 run shell command 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async runShellCommand(request, context = {}) {
     return await this.router.run({
       ...request,
@@ -232,6 +320,15 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
     }, context);
   }
 
+  /**
+   * 执行 run apply patch 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async runApplyPatch(request, context = {}) {
     return await this.router.run({
       ...request,
@@ -239,6 +336,14 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
     }, context);
   }
 
+  /**
+   * 加载 load mcp tools 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async loadMcpTools(options = {}) {
     if (!this.mcpRuntime) {
       return [];
@@ -248,6 +353,12 @@ export class SafeToolCallRuntime extends ToolCallRuntime {
   }
 }
 
+/**
+ * 创建 create apply patch approval gate request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchApprovalGateRequest(options = {}) {
   return {
     resourceType: APPROVAL_RESOURCE_TYPES.APPLY_PATCH,
@@ -263,6 +374,12 @@ export function createApplyPatchApprovalGateRequest(options = {}) {
   };
 }
 
+/**
+ * 创建 create request permissions approval gate request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createRequestPermissionsApprovalGateRequest(options = {}) {
   return {
     resourceType: APPROVAL_RESOURCE_TYPES.TOOL,
@@ -281,6 +398,12 @@ export function createRequestPermissionsApprovalGateRequest(options = {}) {
   };
 }
 
+/**
+ * 创建 create tool call request 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolCallRequest(options = {}) {
   return {
     call_id: String(options.callId ?? options.call_id ?? ""),
@@ -290,6 +413,12 @@ export function createToolCallRequest(options = {}) {
   };
 }
 
+/**
+ * 处理 command from tool arguments 相关逻辑。
+ *
+ * @param {unknown} args - args 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function commandFromToolArguments(args) {
   if (typeof args === "string") {
     return args;
@@ -302,6 +431,12 @@ export function commandFromToolArguments(args) {
   return String(args?.command ?? args?.cmd ?? "");
 }
 
+/**
+ * 处理 patch from tool arguments 相关逻辑。
+ *
+ * @param {unknown} args - args 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function patchFromToolArguments(args) {
   if (typeof args === "string") {
     return args;
@@ -310,6 +445,12 @@ export function patchFromToolArguments(args) {
   return String(args?.patch ?? args?.input ?? "");
 }
 
+/**
+ * 创建 create tool call result 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolCallResult(options = {}) {
   return {
     call_id: String(options.callId ?? options.call_id ?? ""),
@@ -321,6 +462,12 @@ export function createToolCallResult(options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize tool arguments 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeToolArguments(value) {
   if (value == null) {
     return {};

@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+/**
+ * 中文模块说明：bin/codex-js.js
+ *
+ * CLI 可执行入口，负责把命令行调用转交给 src/cli.js。
+ */
 import { runCli } from "../src/cli.js";
 
 runCli(process.argv.slice(2), {

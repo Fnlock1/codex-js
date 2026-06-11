@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/mcp/client.js
+ *
+ * MCP 客户端、stdio 连接、协议转换和运行时封装。
+ */
 import {
   MCP_ERRORS,
   createMcpCallToolResult,
@@ -8,35 +13,95 @@ import {
   normalizeMcpTool
 } from "./protocol.js";
 
+/**
+ * 定义 McpClient 类，封装当前模块的状态和行为。
+ */
 export class McpClient {
+  /**
+   * 列出 list servers 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listServers() {
     throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP client is not connected.");
   }
 
+  /**
+   * 列出 list tools 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _serverName - _serverName 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listTools(_serverName) {
     throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP client is not connected.");
   }
 
+  /**
+   * 处理 call tool 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _request - _request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async callTool(_request) {
     throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP client is not connected.");
   }
 
+  /**
+   * 列出 list resources 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _request - _request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResources(_request = {}) {
     throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP client is not connected.");
   }
 
+  /**
+   * 列出 list resource templates 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _request - _request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResourceTemplates(_request = {}) {
     throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP client is not connected.");
   }
 
+  /**
+   * 读取 read resource 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _request - _request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async readResource(_request = {}) {
     throw createMcpClientError(MCP_ERRORS.NOT_CONNECTED, "MCP client is not connected.");
   }
 }
 
+/**
+ * 定义 NotConnectedMcpClient 类，封装当前模块的状态和行为。
+ */
 export class NotConnectedMcpClient extends McpClient {}
 
+/**
+ * 定义 StaticMcpClient 类，封装当前模块的状态和行为。
+ */
 export class StaticMcpClient extends McpClient {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.servers = new Map();
@@ -55,16 +120,38 @@ export class StaticMcpClient extends McpClient {
     }
   }
 
+  /**
+   * 列出 list servers 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listServers() {
     return Array.from(this.servers.values()).map((server) => server.info);
   }
 
+  /**
+   * 列出 list tools 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} serverName - serverName 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listTools(serverName) {
     const server = this.getServer(serverName);
 
     return server.tools;
   }
 
+  /**
+   * 处理 call tool 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async callTool(request = {}) {
     const server = this.getServer(request.server);
     const toolName = String(request.tool ?? "");
@@ -82,6 +169,14 @@ export class StaticMcpClient extends McpClient {
       : result);
   }
 
+  /**
+   * 列出 list resources 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResources(request = {}) {
     if (request.server) {
       const server = this.getServer(request.server);
@@ -103,6 +198,14 @@ export class StaticMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 列出 list resource templates 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResourceTemplates(request = {}) {
     if (request.server) {
       const server = this.getServer(request.server);
@@ -126,6 +229,14 @@ export class StaticMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 读取 read resource 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async readResource(request = {}) {
     const server = this.getServer(request.server);
     const uri = String(request.uri ?? "");
@@ -147,6 +258,12 @@ export class StaticMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 获取 get server 相关数据。
+   *
+   * @param {unknown} serverName - serverName 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   getServer(serverName) {
     const server = this.servers.get(String(serverName ?? ""));
 
@@ -161,6 +278,14 @@ export class StaticMcpClient extends McpClient {
   }
 }
 
+/**
+ * 创建 create mcp client error 相关数据。
+ *
+ * @param {unknown} code - code 参数。
+ * @param {unknown} message - message 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createMcpClientError(code, message, options = {}) {
   const error = new Error(String(message ?? code));
   error.code = code;

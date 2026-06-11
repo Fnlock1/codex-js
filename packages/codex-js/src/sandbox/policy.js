@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/sandbox/policy.js
+ *
+ * 文件系统、命令和网络访问的 sandbox 策略。
+ */
 import path from "node:path";
 import {
   APPROVAL_POLICIES,
@@ -16,7 +21,15 @@ export const SANDBOX_DECISIONS = Object.freeze({
   DENY: "deny"
 });
 
+/**
+ * 定义 SandboxPolicy 类，封装当前模块的状态和行为。
+ */
 export class SandboxPolicy {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.mode = options.mode ?? options.sandboxMode ?? SANDBOX_MODES.READ_ONLY;
     this.workingDirectory = normalizeSandboxPath(options.workingDirectory ?? process.cwd());
@@ -36,14 +49,33 @@ export class SandboxPolicy {
     ]);
   }
 
+  /**
+   * 处理 check read 相关逻辑。
+   *
+   * @param {unknown} pathToCheck - pathToCheck 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkRead(pathToCheck) {
     return this.checkPath(pathToCheck, SANDBOX_ACCESS_TYPES.READ);
   }
 
+  /**
+   * 处理 check write 相关逻辑。
+   *
+   * @param {unknown} pathToCheck - pathToCheck 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkWrite(pathToCheck) {
     return this.checkPath(pathToCheck, SANDBOX_ACCESS_TYPES.WRITE);
   }
 
+  /**
+   * 处理 check path 相关逻辑。
+   *
+   * @param {unknown} pathToCheck - pathToCheck 参数。
+   * @param {unknown} accessType - accessType 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkPath(pathToCheck, accessType = SANDBOX_ACCESS_TYPES.READ) {
     const absolutePath = normalizeSandboxPath(pathToCheck, this.workingDirectory);
 
@@ -70,6 +102,12 @@ export class SandboxPolicy {
     });
   }
 
+  /**
+   * 处理 check exec 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkExec(request = {}) {
     const cwd = normalizeSandboxPath(request.cwd ?? this.workingDirectory, this.workingDirectory);
     const cwdDecision = this.checkPath(cwd, SANDBOX_ACCESS_TYPES.READ);
@@ -105,6 +143,12 @@ export class SandboxPolicy {
     });
   }
 
+  /**
+   * 处理 check env 相关逻辑。
+   *
+   * @param {unknown} env - env 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkEnv(env = null) {
     if (!env || typeof env !== "object") {
       return createSandboxDecision({
@@ -137,6 +181,10 @@ export class SandboxPolicy {
     });
   }
 
+  /**
+   * 处理 check network 相关逻辑。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkNetwork() {
     return createSandboxDecision({
       decision: this.networkAllowed ? SANDBOX_DECISIONS.ALLOW : SANDBOX_DECISIONS.DENY,
@@ -148,6 +196,13 @@ export class SandboxPolicy {
   }
 }
 
+/**
+ * 创建 create sandbox policy from profile 相关数据。
+ *
+ * @param {unknown} profile - profile 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSandboxPolicyFromProfile(profile = {}, options = {}) {
   const sandboxMode = typeof profile === "string"
     ? profile
@@ -165,6 +220,12 @@ export function createSandboxPolicyFromProfile(profile = {}, options = {}) {
   });
 }
 
+/**
+ * 创建 create sandbox decision 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSandboxDecision(options = {}) {
   return {
     decision: options.decision ?? SANDBOX_DECISIONS.DENY,
@@ -177,6 +238,12 @@ export function createSandboxDecision(options = {}) {
   };
 }
 
+/**
+ * 断言 assert sandbox allowed 相关数据。
+ *
+ * @param {unknown} decision - decision 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function assertSandboxAllowed(decision) {
   if (decision.decision !== SANDBOX_DECISIONS.ALLOW) {
     throw createSandboxError(decision.reason ?? "sandbox denied operation", {
@@ -187,7 +254,16 @@ export function assertSandboxAllowed(decision) {
   return decision;
 }
 
+/**
+ * 定义 SandboxError 类，封装当前模块的状态和行为。
+ */
 export class SandboxError extends Error {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} message - message 参数。
+   * @param {unknown} options - options 参数。
+   */
   constructor(message, options = {}) {
     super(message);
     this.name = "SandboxError";
@@ -196,21 +272,49 @@ export class SandboxError extends Error {
   }
 }
 
+/**
+ * 创建 create sandbox error 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSandboxError(message, options = {}) {
   return new SandboxError(message, options);
 }
 
+/**
+ * 归一化 normalize sandbox path 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @param {unknown} base - base 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeSandboxPath(value, base = process.cwd()) {
   const text = String(value ?? "");
   return path.resolve(path.isAbsolute(text) ? text : path.join(base, text));
 }
 
+/**
+ * 归一化 normalize sandbox roots 相关数据。
+ *
+ * @param {unknown} roots - roots 参数。
+ * @param {unknown} base - base 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeSandboxRoots(roots, base = process.cwd()) {
   return (Array.isArray(roots) ? roots : [roots])
     .filter(Boolean)
     .map((root) => normalizeSandboxPath(root, base));
 }
 
+/**
+ * 处理 path is inside root 相关逻辑。
+ *
+ * @param {unknown} candidate - candidate 参数。
+ * @param {unknown} root - root 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function pathIsInsideRoot(candidate, root) {
   const normalizedCandidate = normalizeSandboxPath(candidate);
   const normalizedRoot = normalizeSandboxPath(root);
@@ -226,6 +330,12 @@ export function pathIsInsideRoot(candidate, root) {
   );
 }
 
+/**
+ * 处理 default permission profile for sandbox mode 相关逻辑。
+ *
+ * @param {unknown} sandboxMode - sandboxMode 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function defaultPermissionProfileForSandboxMode(sandboxMode) {
   switch (sandboxMode) {
     case SANDBOX_MODES.DANGER_FULL_ACCESS:
@@ -247,6 +357,13 @@ export function defaultPermissionProfileForSandboxMode(sandboxMode) {
   }
 }
 
+/**
+ * 处理 default write roots 相关逻辑。
+ *
+ * @param {unknown} mode - mode 参数。
+ * @param {unknown} workingDirectory - workingDirectory 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function defaultWriteRoots(mode, workingDirectory) {
   if (mode === SANDBOX_MODES.WORKSPACE_WRITE) {
     return [workingDirectory];
@@ -259,6 +376,12 @@ function defaultWriteRoots(mode, workingDirectory) {
   return [];
 }
 
+/**
+ * 处理 classify command risk 相关逻辑。
+ *
+ * @param {unknown} command - command 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function classifyCommandRisk(command) {
   const text = Array.isArray(command)
     ? command.join(" ")
@@ -294,6 +417,12 @@ export function classifyCommandRisk(command) {
   return "normal";
 }
 
+/**
+ * 归一化 normalize env key set 相关数据。
+ *
+ * @param {unknown} keys - keys 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeEnvKeySet(keys) {
   return new Set(
     (Array.isArray(keys) ? keys : [keys])

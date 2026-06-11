@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/protocol/permissions.js
+ *
+ * thread、turn、item、user input、permission 等公共协议对象。
+ */
 export const APPROVAL_POLICIES = Object.freeze({
   UNTRUSTED: "untrusted",
   ON_REQUEST: "on-request",

@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/protocol.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import {
   THREAD_STATUS_TYPES,
   createThreadStatus
@@ -93,6 +98,14 @@ export const APP_SERVER_ERROR_CODES = Object.freeze({
   ALREADY_INITIALIZED: -32003
 });
 
+/**
+ * 创建 create rpc request 相关数据。
+ *
+ * @param {unknown} method - method 参数。
+ * @param {unknown} params - params 参数。
+ * @param {unknown} id - id 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createRpcRequest(method, params = {}, id = null) {
   return omitNullish({
     id,
@@ -101,6 +114,13 @@ export function createRpcRequest(method, params = {}, id = null) {
   });
 }
 
+/**
+ * 创建 create rpc notification 相关数据。
+ *
+ * @param {unknown} method - method 参数。
+ * @param {unknown} params - params 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createRpcNotification(method, params = {}) {
   return {
     method: String(method ?? ""),
@@ -108,6 +128,13 @@ export function createRpcNotification(method, params = {}) {
   };
 }
 
+/**
+ * 创建 create rpc success 相关数据。
+ *
+ * @param {unknown} id - id 参数。
+ * @param {unknown} result - result 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createRpcSuccess(id, result = {}) {
   return {
     id,
@@ -115,6 +142,15 @@ export function createRpcSuccess(id, result = {}) {
   };
 }
 
+/**
+ * 创建 create rpc error 相关数据。
+ *
+ * @param {unknown} id - id 参数。
+ * @param {unknown} code - code 参数。
+ * @param {unknown} message - message 参数。
+ * @param {unknown} data - data 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createRpcError(id, code, message, data = null) {
   return omitNullish({
     id,
@@ -126,6 +162,12 @@ export function createRpcError(id, code, message, data = null) {
   });
 }
 
+/**
+ * 归一化 normalize rpc message 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeRpcMessage(message) {
   if (!message || typeof message !== "object") {
     throw createAppServerProtocolError(
@@ -148,6 +190,14 @@ export function normalizeRpcMessage(message) {
   };
 }
 
+/**
+ * 创建 create thread view 相关数据。
+ *
+ * @param {unknown} thread - thread 参数。
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createThreadView(thread, session = null, options = {}) {
   return {
     id: thread.id,
@@ -168,6 +218,13 @@ export function createThreadView(thread, session = null, options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize thread status 相关数据。
+ *
+ * @param {unknown} status - status 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeThreadStatus(status, options = {}) {
   if (status && typeof status === "object" && typeof status.type === "string") {
     return status;
@@ -191,6 +248,13 @@ export function normalizeThreadStatus(status, options = {}) {
   }
 }
 
+/**
+ * 处理 page turns 相关逻辑。
+ *
+ * @param {unknown} turns - turns 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function pageTurns(turns = [], options = {}) {
   const sortDirection = options.sortDirection === "asc" ? "asc" : "desc";
   const limit = clampLimit(options.limit ?? 50);
@@ -211,6 +275,13 @@ export function pageTurns(turns = [], options = {}) {
   };
 }
 
+/**
+ * 创建 create turn view 相关数据。
+ *
+ * @param {unknown} turn - turn 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTurnView(turn = {}, options = {}) {
   const itemsView = options.itemsView ?? "full";
 
@@ -226,6 +297,12 @@ export function createTurnView(turn = {}, options = {}) {
   };
 }
 
+/**
+ * 创建 create command exec view 相关数据。
+ *
+ * @param {unknown} result - result 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCommandExecView(result = {}) {
   return {
     status: result.error ? "failed" : "completed",
@@ -236,6 +313,14 @@ export function createCommandExecView(result = {}) {
   };
 }
 
+/**
+ * 处理 thread event to app server notification 相关逻辑。
+ *
+ * @param {unknown} event - event 参数。
+ * @param {unknown} threadId - threadId 参数。
+ * @param {unknown} turnId - turnId 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function threadEventToAppServerNotification(event, threadId, turnId = null) {
   const base = {
     threadId,
@@ -289,6 +374,14 @@ export function threadEventToAppServerNotification(event, threadId, turnId = nul
   }
 }
 
+/**
+ * 创建 create app server protocol error 相关数据。
+ *
+ * @param {unknown} code - code 参数。
+ * @param {unknown} message - message 参数。
+ * @param {unknown} data - data 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createAppServerProtocolError(code, message, data = null) {
   const error = new Error(String(message ?? ""));
   error.code = code;
@@ -297,6 +390,12 @@ export function createAppServerProtocolError(code, message, data = null) {
   return error;
 }
 
+/**
+ * 处理 clamp limit 相关逻辑。
+ *
+ * @param {unknown} limit - limit 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clampLimit(limit) {
   const number = Number(limit);
 
@@ -307,12 +406,24 @@ function clampLimit(limit) {
   return Math.min(Math.floor(number), 200);
 }
 
+/**
+ * 编码 encode cursor 相关数据。
+ *
+ * @param {unknown} offset - offset 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function encodeCursor(offset) {
   return Buffer.from(JSON.stringify({
     offset
   })).toString("base64url");
 }
 
+/**
+ * 解码 decode cursor 相关数据。
+ *
+ * @param {unknown} cursor - cursor 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function decodeCursor(cursor) {
   if (!cursor) {
     return 0;
@@ -328,6 +439,12 @@ function decodeCursor(cursor) {
   }
 }
 
+/**
+ * 处理 omit nullish 相关逻辑。
+ *
+ * @param {unknown} object - object 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function omitNullish(object) {
   return Object.fromEntries(
     Object.entries(object).filter(([, value]) => value != null)

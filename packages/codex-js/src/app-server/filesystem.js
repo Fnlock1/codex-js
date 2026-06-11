@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/filesystem.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import {
   watch as watchFs
 } from "node:fs";
@@ -14,10 +19,12 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import {
-  APPROVAL_ACTIONS,
-  APPROVAL_DECISIONS,
-  APPROVAL_RESOURCE_TYPES
+  APPROVAL_DECISIONS
 } from "../approval/policy.js";
+import {
+  capabilityRequestToApprovalRequest,
+  createFilesystemWriteCapabilityRequest
+} from "../policy/capability.js";
 import {
   SANDBOX_ACCESS_TYPES,
   SANDBOX_DECISIONS,
@@ -50,7 +57,15 @@ export const FS_WRITE_OPERATIONS = new Set([
   APP_SERVER_FS_METHODS.COPY
 ]);
 
+/**
+ * 定义 AppServerFilesystemRuntime 类，封装当前模块的状态和行为。
+ */
 export class AppServerFilesystemRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.workingDirectory = options.workingDirectory ?? process.cwd();
     this.allowWrites = Boolean(options.allowWrites ?? false);
@@ -61,6 +76,14 @@ export class AppServerFilesystemRuntime {
     this.watchers = new Map();
   }
 
+  /**
+   * 读取 read file 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async readFile(params = {}) {
     const filePath = this.resolvePath(requireFsParam(params, "path"));
     this.assertAllowed({
@@ -76,6 +99,14 @@ export class AppServerFilesystemRuntime {
     };
   }
 
+  /**
+   * 写入 write file 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async writeFile(params = {}) {
     const filePath = this.resolvePath(requireFsParam(params, "path"));
     this.assertAllowed({
@@ -89,6 +120,14 @@ export class AppServerFilesystemRuntime {
     return {};
   }
 
+  /**
+   * 创建 create directory 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async createDirectory(params = {}) {
     const directoryPath = this.resolvePath(requireFsParam(params, "path"));
     this.assertAllowed({
@@ -104,6 +143,14 @@ export class AppServerFilesystemRuntime {
     return {};
   }
 
+  /**
+   * 获取 get metadata 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async getMetadata(params = {}) {
     const filePath = this.resolvePath(requireFsParam(params, "path"));
     this.assertAllowed({
@@ -126,6 +173,14 @@ export class AppServerFilesystemRuntime {
     };
   }
 
+  /**
+   * 读取 read directory 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async readDirectory(params = {}) {
     const directoryPath = this.resolvePath(requireFsParam(params, "path"));
     this.assertAllowed({
@@ -147,6 +202,14 @@ export class AppServerFilesystemRuntime {
     };
   }
 
+  /**
+   * 处理 remove 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async remove(params = {}) {
     const targetPath = this.resolvePath(requireFsParam(params, "path"));
     this.assertAllowed({
@@ -163,6 +226,14 @@ export class AppServerFilesystemRuntime {
     return {};
   }
 
+  /**
+   * 处理 copy 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async copy(params = {}) {
     const sourcePath = this.resolvePath(requireFsParam(params, "sourcePath"));
     const destinationPath = this.resolvePath(requireFsParam(params, "destinationPath"));
@@ -191,6 +262,14 @@ export class AppServerFilesystemRuntime {
     return {};
   }
 
+  /**
+   * 处理 watch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async watch(params = {}) {
     const watchId = String(requireFsParam(params, "watchId"));
     const watchPath = this.resolvePath(requireFsParam(params, "path"));
@@ -244,6 +323,14 @@ export class AppServerFilesystemRuntime {
     };
   }
 
+  /**
+   * 处理 unwatch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async unwatch(params = {}) {
     const watchId = String(requireFsParam(params, "watchId"));
     const entry = this.watchers.get(watchId);
@@ -264,6 +351,10 @@ export class AppServerFilesystemRuntime {
     return {};
   }
 
+  /**
+   * 处理 close all watchers 相关逻辑。
+   * @returns {unknown} 返回处理后的结果。
+   */
   closeAllWatchers() {
     for (const entry of this.watchers.values()) {
       entry.watcher.close();
@@ -272,6 +363,12 @@ export class AppServerFilesystemRuntime {
     this.watchers.clear();
   }
 
+  /**
+   * 发送 emit changed 相关数据。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   emitChanged(options = {}) {
     if (!this.onChanged) {
       return;
@@ -293,6 +390,12 @@ export class AppServerFilesystemRuntime {
     });
   }
 
+  /**
+   * 解析 resolve path 相关数据。
+   *
+   * @param {unknown} value - value 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   resolvePath(value) {
     const text = String(value ?? "");
 
@@ -309,6 +412,12 @@ export class AppServerFilesystemRuntime {
     return normalizeSandboxPath(text, this.workingDirectory);
   }
 
+  /**
+   * 断言 assert allowed 相关数据。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   assertAllowed(options = {}) {
     if (options.requiresWriteGate && !this.allowWrites) {
       throw createAppServerProtocolError(
@@ -340,16 +449,11 @@ export class AppServerFilesystemRuntime {
     }
 
     if (this.approvalGate && options.requiresWriteGate) {
-      const approval = this.approvalGate.check({
-        resourceType: APPROVAL_RESOURCE_TYPES.TOOL,
-        action: APPROVAL_ACTIONS.WRITE,
-        subject: `${options.method}:${options.path}`,
-        description: `Filesystem write operation: ${options.method}`,
-        metadata: {
-          method: options.method,
-          path: options.path
-        }
+      const capability = createFilesystemWriteCapabilityRequest({
+        method: options.method,
+        path: options.path
       });
+      const approval = this.approvalGate.check(capabilityRequestToApprovalRequest(capability));
 
       if (approval.decision !== APPROVAL_DECISIONS.ALLOW) {
         const serverRequest = approval.decision === APPROVAL_DECISIONS.PROMPT && this.serverRequestStore
@@ -372,6 +476,7 @@ export class AppServerFilesystemRuntime {
             method: options.method,
             path: options.path,
             approval,
+            capability,
             requestId: serverRequest?.requestId ?? null,
             serverRequest: serverRequest ? {
               requestId: serverRequest.requestId,
@@ -385,10 +490,23 @@ export class AppServerFilesystemRuntime {
   }
 }
 
+/**
+ * 创建 create app server filesystem runtime 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createAppServerFilesystemRuntime(options = {}) {
   return new AppServerFilesystemRuntime(options);
 }
 
+/**
+ * 处理 require fs param 相关逻辑。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function requireFsParam(params, name) {
   const value = params?.[name];
 

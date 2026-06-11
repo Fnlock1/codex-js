@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/exec/runner.js
+ *
+ * 命令执行、PTY 会话、输出事件和执行权限策略。
+ */
 import {
   ITEM_STATUSES,
   createExecToolCallOutput,
@@ -19,7 +24,15 @@ import {
   createExecRequest
 } from "./runtime.js";
 
+/**
+ * 定义 ExecRunner 类，封装当前模块的状态和行为。
+ */
 export class ExecRunner {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.workingDirectory = options.workingDirectory ?? process.cwd();
     this.permissionPolicy = options.permissionPolicy ?? new ExecPermissionPolicy({
@@ -30,10 +43,26 @@ export class ExecRunner {
     this.sandboxPolicy = options.sandboxPolicy ?? null;
   }
 
+  /**
+   * 执行 run dry command 相关数据。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runDryCommand(request) {
     return yield* this.runCommand(request);
   }
 
+  /**
+   * 执行 run command 相关数据。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runCommand(request) {
     const normalized = normalizeExecRequest(request, {
       workingDirectory: this.workingDirectory
@@ -123,6 +152,13 @@ export class ExecRunner {
   }
 }
 
+/**
+ * 归一化 normalize exec request 相关数据。
+ *
+ * @param {unknown} request - request 参数。
+ * @param {unknown} defaults - defaults 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeExecRequest(request, defaults = {}) {
   if (typeof request === "string") {
     return {

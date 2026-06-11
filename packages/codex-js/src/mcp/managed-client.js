@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/mcp/managed-client.js
+ *
+ * MCP 客户端、stdio 连接、协议转换和运行时封装。
+ */
 import {
   MCP_ERRORS,
   createMcpCallToolResult
@@ -12,7 +17,15 @@ import {
   StdioMcpClient
 } from "./stdio-client.js";
 
+/**
+ * 定义 ManagedMcpClient 类，封装当前模块的状态和行为。
+ */
 export class ManagedMcpClient extends McpClient {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.registry = options.registry ?? new McpServerRegistry({
@@ -23,10 +36,22 @@ export class ManagedMcpClient extends McpClient {
     this.clients = new Map();
   }
 
+  /**
+   * 列出 list servers 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listServers() {
     return this.registry.listServerInfo();
   }
 
+  /**
+   * 列出 list server statuses 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listServerStatuses() {
     return this.registry.list().map((server) => ({
       name: server.info.name,
@@ -38,6 +63,14 @@ export class ManagedMcpClient extends McpClient {
     }));
   }
 
+  /**
+   * 处理 refresh server 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} serverName - serverName 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async refreshServer(serverName) {
     const server = this.registry.get(serverName);
 
@@ -71,6 +104,12 @@ export class ManagedMcpClient extends McpClient {
     return this.registry.setStatus(server.info.name, MCP_SERVER_STATUSES.CONNECTED);
   }
 
+  /**
+   * 处理 refresh all 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async refreshAll() {
     const statuses = [];
 
@@ -81,6 +120,14 @@ export class ManagedMcpClient extends McpClient {
     return statuses;
   }
 
+  /**
+   * 列出 list tools 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} serverName - serverName 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listTools(serverName) {
     const liveClient = this.clients.get(String(serverName ?? ""));
 
@@ -95,6 +142,14 @@ export class ManagedMcpClient extends McpClient {
     return this.registry.get(serverName).tools;
   }
 
+  /**
+   * 处理 call tool 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async callTool(request = {}) {
     const server = this.registry.get(request.server);
     const liveClient = this.clients.get(server.info.name);
@@ -118,6 +173,14 @@ export class ManagedMcpClient extends McpClient {
       : result);
   }
 
+  /**
+   * 列出 list resources 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResources(request = {}) {
     if (request.server) {
       const server = this.registry.get(request.server);
@@ -148,6 +211,14 @@ export class ManagedMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 列出 list resource templates 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async listResourceTemplates(request = {}) {
     if (request.server) {
       const server = this.registry.get(request.server);
@@ -180,6 +251,14 @@ export class ManagedMcpClient extends McpClient {
     };
   }
 
+  /**
+   * 读取 read resource 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async readResource(request = {}) {
     const server = this.registry.get(request.server);
     const liveClient = this.clients.get(server.info.name);
@@ -201,6 +280,14 @@ export class ManagedMcpClient extends McpClient {
     return serverResourceContentToResult(request.server, uri, content);
   }
 
+  /**
+   * 处理 close server 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} serverName - serverName 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async closeServer(serverName) {
     const key = String(serverName ?? "");
     const client = this.clients.get(key);
@@ -212,12 +299,26 @@ export class ManagedMcpClient extends McpClient {
     this.clients.delete(key);
   }
 
+  /**
+   * 处理 close all 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async closeAll() {
     for (const serverName of [...this.clients.keys()]) {
       await this.closeServer(serverName);
     }
   }
 
+  /**
+   * 处理 ensure live client 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} server - server 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async ensureLiveClient(server) {
     const existing = this.clients.get(server.info.name);
 
@@ -237,10 +338,22 @@ export class ManagedMcpClient extends McpClient {
   }
 }
 
+/**
+ * 创建 create managed mcp client 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createManagedMcpClient(options = {}) {
   return new ManagedMcpClient(options);
 }
 
+/**
+ * 处理 should use live stdio server 相关逻辑。
+ *
+ * @param {unknown} server - server 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function shouldUseLiveStdioServer(server) {
   return (
     server.config.transport === "stdio" &&

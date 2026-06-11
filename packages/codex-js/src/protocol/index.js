@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/protocol/index.js
+ *
+ * thread、turn、item、user input、permission 等公共协议对象。
+ */
 export {
   EVENT_TYPES,
   createErrorEvent,

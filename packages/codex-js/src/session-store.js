@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/session-store.js
+ *
+ *
+ */
 import { copyFile, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -8,12 +13,29 @@ import {
   rollbackSessionTurns
 } from "./session/history.js";
 
+/**
+ * 定义 SessionStore 类，封装当前模块的状态和行为。
+ */
 export class SessionStore {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.root = resolve(options.sessionStoreDirectory ?? defaultSessionStoreDirectory());
     this.archivedRoot = resolve(options.archivedSessionStoreDirectory ?? join(this.root, "archived"));
   }
 
+  /**
+   * 加载 load 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async load(threadId, options = {}) {
     try {
       const filePath = this.sessionPath(threadId, {
@@ -39,6 +61,15 @@ export class SessionStore {
     }
   }
 
+  /**
+   * 保存 save 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} session - session 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async save(session, options = {}) {
     const filePath = this.sessionPath(session.threadId, {
       archived: options.archived
@@ -48,6 +79,14 @@ export class SessionStore {
     return session;
   }
 
+  /**
+   * 列出 list 相关数据。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async list(options = {}) {
     const archived = Boolean(options.archived);
     const directory = archived ? this.archivedRoot : this.root;
@@ -104,6 +143,14 @@ export class SessionStore {
     };
   }
 
+  /**
+   * 处理 archive 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async archive(threadId) {
     const session = await this.load(threadId);
 
@@ -125,6 +172,14 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 unarchive 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async unarchive(threadId) {
     const session = await this.load(threadId, {
       archived: true
@@ -140,6 +195,15 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 fork 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fork(threadId, options = {}) {
     const source = await this.load(threadId, {
       includeArchived: true
@@ -176,6 +240,15 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 rollback 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async rollback(threadId, options = {}) {
     const session = await this.load(threadId, {
       includeArchived: true
@@ -202,6 +275,15 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 update metadata 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} metadataPatch - metadataPatch 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async updateMetadata(threadId, metadataPatch = {}) {
     const session = await this.load(threadId, {
       includeArchived: true
@@ -233,6 +315,15 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 replace metadata 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} metadata - metadata 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async replaceMetadata(threadId, metadata = {}) {
     const session = await this.load(threadId, {
       includeArchived: true
@@ -263,6 +354,16 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 inject response items 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} items - items 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async injectResponseItems(threadId, items = [], options = {}) {
     const session = await this.load(threadId, {
       includeArchived: true
@@ -287,6 +388,15 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 move session 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async moveSession(threadId, options = {}) {
     const sourcePath = this.sessionPath(threadId, {
       archived: options.fromArchived
@@ -322,19 +432,43 @@ export class SessionStore {
     });
   }
 
+  /**
+   * 处理 session path 相关逻辑。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   sessionPath(threadId, options = {}) {
     return join(options.archived ? this.archivedRoot : this.root, `${sanitizeThreadId(threadId)}.json`);
   }
 }
 
+/**
+ * 处理 default session store directory 相关逻辑。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function defaultSessionStoreDirectory() {
   return join(homedir(), ".codex-js", "sessions");
 }
 
+/**
+ * 处理 sanitize thread id 相关逻辑。
+ *
+ * @param {unknown} threadId - threadId 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function sanitizeThreadId(threadId) {
   return String(threadId).replace(/[^a-zA-Z0-9_.-]/g, "_");
 }
 
+/**
+ * 处理 attach session store metadata 相关逻辑。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function attachSessionStoreMetadata(session, options = {}) {
   return {
     ...session,
@@ -343,6 +477,13 @@ function attachSessionStoreMetadata(session, options = {}) {
   };
 }
 
+/**
+ * 处理 matches session list filters 相关逻辑。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function matchesSessionListFilters(session, options = {}) {
   if (options.cwd && resolve(String(session.workingDirectory ?? "")) !== resolve(String(options.cwd))) {
     return false;
@@ -366,16 +507,35 @@ function matchesSessionListFilters(session, options = {}) {
   return true;
 }
 
+/**
+ * 处理 compare sessions newest first 相关逻辑。
+ *
+ * @param {unknown} left - left 参数。
+ * @param {unknown} right - right 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function compareSessionsNewestFirst(left, right) {
   return timestampValue(right.updatedAt ?? right.createdAt) - timestampValue(left.updatedAt ?? left.createdAt);
 }
 
+/**
+ * 处理 timestamp value 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function timestampValue(value) {
   const time = Date.parse(value ?? "");
 
   return Number.isFinite(time) ? time : 0;
 }
 
+/**
+ * 处理 clamp limit 相关逻辑。
+ *
+ * @param {unknown} limit - limit 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clampLimit(limit) {
   const number = Number(limit);
 
@@ -386,12 +546,24 @@ function clampLimit(limit) {
   return Math.min(Math.floor(number), 200);
 }
 
+/**
+ * 编码 encode cursor 相关数据。
+ *
+ * @param {unknown} offset - offset 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function encodeCursor(offset) {
   return Buffer.from(JSON.stringify({
     offset
   })).toString("base64url");
 }
 
+/**
+ * 解码 decode cursor 相关数据。
+ *
+ * @param {unknown} cursor - cursor 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function decodeCursor(cursor) {
   if (!cursor) {
     return 0;

@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/experimental-features.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import {
   APP_SERVER_ERROR_CODES,
   createAppServerProtocolError
@@ -97,12 +102,26 @@ export const EXPERIMENTAL_FEATURES = Object.freeze([
   feature("workspace_dependencies", EXPERIMENTAL_FEATURE_STAGES.STABLE, true)
 ]);
 
+/**
+ * 定义 ExperimentalFeatureEnablementStore 类，封装当前模块的状态和行为。
+ */
 export class ExperimentalFeatureEnablementStore {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} initialEnablement - initialEnablement 参数。
+   */
   constructor(initialEnablement = {}) {
     this.enablement = {};
     this.patch(initialEnablement);
   }
 
+  /**
+   * 处理 patch 相关逻辑。
+   *
+   * @param {unknown} enablement - enablement 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   patch(enablement = {}) {
     const accepted = {};
 
@@ -122,10 +141,20 @@ export class ExperimentalFeatureEnablementStore {
     return accepted;
   }
 
+  /**
+   * 获取 get 相关数据。
+   *
+   * @param {unknown} name - name 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   get(name) {
     return this.enablement[name];
   }
 
+  /**
+   * 转换为可序列化 JSON 对象。
+   * @returns {unknown} 返回处理后的结果。
+   */
   toJSON() {
     return {
       ...this.enablement
@@ -133,6 +162,13 @@ export class ExperimentalFeatureEnablementStore {
   }
 }
 
+/**
+ * 列出 list experimental features 相关数据。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function listExperimentalFeatures(params = {}, options = {}) {
   const runtimeEnablement = options.runtimeEnablement ?? {};
   const configFeatures = options.configFeatures ?? {};
@@ -151,12 +187,26 @@ export function listExperimentalFeatures(params = {}, options = {}) {
   };
 }
 
+/**
+ * 设置 set experimental feature enablement 相关数据。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} store - store 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function setExperimentalFeatureEnablement(params = {}, store = new ExperimentalFeatureEnablementStore()) {
   return {
     enablement: store.patch(params.enablement ?? {})
   };
 }
 
+/**
+ * 创建 create experimental feature view 相关数据。
+ *
+ * @param {unknown} spec - spec 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createExperimentalFeatureView(spec, options = {}) {
   const configFeatures = options.configFeatures ?? {};
   const runtimeEnablement = options.runtimeEnablement ?? {};
@@ -177,6 +227,14 @@ export function createExperimentalFeatureView(spec, options = {}) {
   };
 }
 
+/**
+ * 处理 feature 相关逻辑。
+ *
+ * @param {unknown} name - name 参数。
+ * @param {unknown} stage - stage 参数。
+ * @param {unknown} defaultEnabled - defaultEnabled 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function feature(name, stage, defaultEnabled) {
   return Object.freeze({
     name,
@@ -188,6 +246,14 @@ function feature(name, stage, defaultEnabled) {
   });
 }
 
+/**
+ * 处理 beta feature 相关逻辑。
+ *
+ * @param {unknown} name - name 参数。
+ * @param {unknown} defaultEnabled - defaultEnabled 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function betaFeature(name, defaultEnabled, options = {}) {
   return Object.freeze({
     name,
@@ -199,6 +265,13 @@ function betaFeature(name, defaultEnabled, options = {}) {
   });
 }
 
+/**
+ * 处理 clamp feature limit 相关逻辑。
+ *
+ * @param {unknown} limit - limit 参数。
+ * @param {unknown} total - total 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clampFeatureLimit(limit, total) {
   const number = Number(limit ?? total);
 
@@ -209,6 +282,13 @@ function clampFeatureLimit(limit, total) {
   return Math.min(Math.floor(number), total);
 }
 
+/**
+ * 解码 decode feature cursor 相关数据。
+ *
+ * @param {unknown} cursor - cursor 参数。
+ * @param {unknown} total - total 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function decodeFeatureCursor(cursor, total) {
   if (cursor == null || cursor === "") {
     return 0;

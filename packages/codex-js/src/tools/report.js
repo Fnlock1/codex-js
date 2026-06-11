@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/tools/report.js
+ *
+ * 工具定义、路由、handler、内置工具和上游工具格式转换。
+ */
 import {
   BUILTIN_TOOL_CATEGORIES,
   TOOL_EXPOSURE,
@@ -52,6 +57,12 @@ export const UPSTREAM_TOOL_GAPS = Object.freeze([
   }
 ]);
 
+/**
+ * 创建 create tool capability report 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolCapabilityReport(options = {}) {
   const runtime = options.runtime ?? null;
   const config = options.config ?? {};
@@ -90,6 +101,12 @@ export function createToolCapabilityReport(options = {}) {
   };
 }
 
+/**
+ * 创建 create tool doctor findings 相关数据。
+ *
+ * @param {unknown} report - report 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolDoctorFindings(report) {
   const findings = [];
   const byName = new Map(report.tools.map((tool) => [tool.name, tool]));
@@ -153,6 +170,13 @@ export function createToolDoctorFindings(report) {
   return findings;
 }
 
+/**
+ * 格式化 format tool report text 相关数据。
+ *
+ * @param {unknown} report - report 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function formatToolReportText(report, options = {}) {
   const lines = [
     "codex-js tools",
@@ -187,6 +211,12 @@ export function formatToolReportText(report, options = {}) {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * 格式化 format tool doctor text 相关数据。
+ *
+ * @param {unknown} report - report 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function formatToolDoctorText(report) {
   const findings = createToolDoctorFindings(report);
   const lines = [
@@ -212,6 +242,13 @@ export function formatToolDoctorText(report) {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * 创建 create tool capability 相关数据。
+ *
+ * @param {unknown} entry - entry 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createToolCapability(entry, options = {}) {
   const metadata = entry.metadata ?? {};
   const exposure = metadata.exposure ?? TOOL_EXPOSURE.MODEL_VISIBLE;
@@ -247,6 +284,12 @@ function createToolCapability(entry, options = {}) {
   };
 }
 
+/**
+ * 处理 determine tool status 相关逻辑。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function determineToolStatus(options = {}) {
   if (options.dynamic) {
     return TOOL_CAPABILITY_STATUSES.DYNAMIC;
@@ -283,6 +326,13 @@ function determineToolStatus(options = {}) {
   return TOOL_CAPABILITY_STATUSES.READY;
 }
 
+/**
+ * 处理 tool is configured 相关逻辑。
+ *
+ * @param {unknown} name - name 参数。
+ * @param {unknown} config - config 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function toolIsConfigured(name, config = {}) {
   if (name === BUILTIN_TOOL_NAMES.WEB_SEARCH) {
     return Boolean(config.tools?.hosted?.webSearchUrl);
@@ -305,6 +355,13 @@ function toolIsConfigured(name, config = {}) {
   return true;
 }
 
+/**
+ * 创建 create tool notes 相关数据。
+ *
+ * @param {unknown} name - name 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createToolNotes(name, options = {}) {
   const notes = [];
 
@@ -346,6 +403,12 @@ function createToolNotes(name, options = {}) {
   return notes;
 }
 
+/**
+ * 处理 count tool capabilities 相关逻辑。
+ *
+ * @param {unknown} tools - tools 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function countToolCapabilities(tools) {
   const counts = {
     status: {},
@@ -362,6 +425,13 @@ function countToolCapabilities(tools) {
   return counts;
 }
 
+/**
+ * 处理 increment 相关逻辑。
+ *
+ * @param {unknown} target - target 参数。
+ * @param {unknown} key - key 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function increment(target, key) {
   target[key] = (target[key] ?? 0) + 1;
 }

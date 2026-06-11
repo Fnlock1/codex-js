@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/apply-patch/apply.js
+ *
+ * 解析、规划和执行 apply_patch 文件补丁。
+ */
 import path from "node:path";
 import {
   SANDBOX_ACCESS_TYPES,
@@ -11,7 +16,16 @@ export const APPLY_PATCH_CHANGE_TYPES = Object.freeze({
   UPDATE: "update"
 });
 
+/**
+ * 定义 ApplyPatchApplicationError 类，封装当前模块的状态和行为。
+ */
 export class ApplyPatchApplicationError extends Error {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} message - message 参数。
+   * @param {unknown} options - options 参数。
+   */
   constructor(message, options = {}) {
     super(message);
     this.name = "ApplyPatchApplicationError";
@@ -20,10 +34,26 @@ export class ApplyPatchApplicationError extends Error {
   }
 }
 
+/**
+ * 创建 create apply patch application error 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchApplicationError(message, options = {}) {
   return new ApplyPatchApplicationError(message, options);
 }
 
+/**
+ * 计算 compute apply patch plan 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function computeApplyPatchPlan(parsed, options = {}) {
   const workingDirectory = normalizeWorkingDirectory(options.workingDirectory);
   const fileProvider = options.fileProvider ?? {};
@@ -140,6 +170,13 @@ export async function computeApplyPatchPlan(parsed, options = {}) {
   };
 }
 
+/**
+ * 断言 assert sandbox write allowed 相关数据。
+ *
+ * @param {unknown} sandboxPolicy - sandboxPolicy 参数。
+ * @param {unknown} absolutePath - absolutePath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function assertSandboxWriteAllowed(sandboxPolicy, absolutePath) {
   if (!sandboxPolicy) {
     return;
@@ -148,6 +185,14 @@ function assertSandboxWriteAllowed(sandboxPolicy, absolutePath) {
   assertSandboxAllowed(sandboxPolicy.checkPath(absolutePath, SANDBOX_ACCESS_TYPES.WRITE));
 }
 
+/**
+ * 处理 derive new contents from chunks 相关逻辑。
+ *
+ * @param {unknown} originalContent - originalContent 参数。
+ * @param {unknown} chunks - chunks 参数。
+ * @param {unknown} displayPath - displayPath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function deriveNewContentsFromChunks(originalContent, chunks, displayPath = "") {
   const originalLines = String(originalContent ?? "").split("\n");
 
@@ -169,6 +214,14 @@ export function deriveNewContentsFromChunks(originalContent, chunks, displayPath
   };
 }
 
+/**
+ * 计算 compute replacements 相关数据。
+ *
+ * @param {unknown} originalLines - originalLines 参数。
+ * @param {unknown} chunks - chunks 参数。
+ * @param {unknown} displayPath - displayPath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function computeReplacements(originalLines, chunks, displayPath = "") {
   const replacements = [];
   let lineIndex = 0;
@@ -237,6 +290,13 @@ export function computeReplacements(originalLines, chunks, displayPath = "") {
   return replacements.sort((left, right) => left.start - right.start);
 }
 
+/**
+ * 应用 apply replacements 相关数据。
+ *
+ * @param {unknown} originalLines - originalLines 参数。
+ * @param {unknown} replacements - replacements 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function applyReplacements(originalLines, replacements) {
   const lines = [...originalLines];
 
@@ -247,6 +307,15 @@ export function applyReplacements(originalLines, replacements) {
   return lines;
 }
 
+/**
+ * 处理 seek sequence 相关逻辑。
+ *
+ * @param {unknown} lines - lines 参数。
+ * @param {unknown} pattern - pattern 参数。
+ * @param {unknown} start - start 参数。
+ * @param {unknown} eof - eof 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function seekSequence(lines, pattern, start = 0, eof = false) {
   if (pattern.length === 0) {
     return start;
@@ -276,6 +345,13 @@ export function seekSequence(lines, pattern, start = 0, eof = false) {
   return null;
 }
 
+/**
+ * 解析 resolve patch path 相关数据。
+ *
+ * @param {unknown} patchPath - patchPath 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function resolvePatchPath(patchPath, options = {}) {
   const workingDirectory = normalizeWorkingDirectory(options.workingDirectory);
   const rawPath = String(patchPath ?? "");
@@ -314,10 +390,27 @@ export function resolvePatchPath(patchPath, options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize working directory 相关数据。
+ *
+ * @param {unknown} workingDirectory - workingDirectory 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeWorkingDirectory(workingDirectory = process.cwd()) {
   return path.resolve(String(workingDirectory || process.cwd()));
 }
 
+/**
+ * 读取 read required patch file 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} fileProvider - fileProvider 参数。
+ * @param {unknown} resolvedPath - resolvedPath 参数。
+ * @param {unknown} displayPath - displayPath 参数。
+ * @param {unknown} operation - operation 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function readRequiredPatchFile(fileProvider, resolvedPath, displayPath, operation) {
   const file = await readPatchFile(fileProvider, resolvedPath, displayPath);
 
@@ -338,6 +431,16 @@ async function readRequiredPatchFile(fileProvider, resolvedPath, displayPath, op
   return file;
 }
 
+/**
+ * 读取 read patch file 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} fileProvider - fileProvider 参数。
+ * @param {unknown} resolvedPath - resolvedPath 参数。
+ * @param {unknown} displayPath - displayPath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function readPatchFile(fileProvider, resolvedPath, displayPath) {
   if (typeof fileProvider === "function") {
     return normalizePatchFile(await fileProvider({
@@ -373,6 +476,12 @@ async function readPatchFile(fileProvider, resolvedPath, displayPath) {
   return normalizePatchFile(null);
 }
 
+/**
+ * 归一化 normalize patch file 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizePatchFile(value) {
   if (value == null) {
     return {
@@ -397,22 +506,56 @@ function normalizePatchFile(value) {
   };
 }
 
+/**
+ * 处理 exact line match 相关逻辑。
+ *
+ * @param {unknown} left - left 参数。
+ * @param {unknown} right - right 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function exactLineMatch(left, right) {
   return left === right;
 }
 
+/**
+ * 处理 trim end line match 相关逻辑。
+ *
+ * @param {unknown} left - left 参数。
+ * @param {unknown} right - right 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function trimEndLineMatch(left, right) {
   return left.trimEnd() === right.trimEnd();
 }
 
+/**
+ * 处理 trim line match 相关逻辑。
+ *
+ * @param {unknown} left - left 参数。
+ * @param {unknown} right - right 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function trimLineMatch(left, right) {
   return left.trim() === right.trim();
 }
 
+/**
+ * 归一化 normalized line match 相关数据。
+ *
+ * @param {unknown} left - left 参数。
+ * @param {unknown} right - right 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizedLineMatch(left, right) {
   return normalizeFuzzyLine(left) === normalizeFuzzyLine(right);
 }
 
+/**
+ * 归一化 normalize fuzzy line 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeFuzzyLine(value) {
   return String(value ?? "")
     .trim()

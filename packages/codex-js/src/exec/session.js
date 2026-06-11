@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/exec/session.js
+ *
+ * 命令执行、PTY 会话、输出事件和执行权限策略。
+ */
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -15,7 +20,15 @@ export const COMMAND_SESSION_STATUSES = Object.freeze({
   CLOSED: "closed"
 });
 
+/**
+ * 定义 CommandSessionManager 类，封装当前模块的状态和行为。
+ */
 export class CommandSessionManager {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.sessions = new Map();
     this.nextNumericId = 1;
@@ -24,6 +37,13 @@ export class CommandSessionManager {
     this.onOutputDelta = options.onOutputDelta ?? null;
   }
 
+  /**
+   * 启动 start 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   start(request = {}, options = {}) {
     const normalized = normalizeExecCommandRequest(request);
     const sessionId = options.sessionId ?? this.nextNumericId++;
@@ -68,6 +88,12 @@ export class CommandSessionManager {
     });
   }
 
+  /**
+   * 写入 write 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   write(request = {}) {
     const sessionId = normalizeSessionId(request.session_id ?? request.sessionId ?? request.process_id ?? request.processId);
     const session = this.lookup(sessionId);
@@ -106,30 +132,67 @@ export class CommandSessionManager {
     });
   }
 
+  /**
+   * 获取 get 相关数据。
+   *
+   * @param {unknown} sessionId - sessionId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   get(sessionId) {
     return this.lookup(sessionId);
   }
 
+  /**
+   * 列出 list 相关数据。
+   * @returns {unknown} 返回处理后的结果。
+   */
   list() {
     return Array.from(new Set(this.sessions.values()));
   }
 
+  /**
+   * 处理 lookup 相关逻辑。
+   *
+   * @param {unknown} sessionId - sessionId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   lookup(sessionId) {
     return this.sessions.get(String(sessionId)) ?? null;
   }
 
+  /**
+   * 处理 active session for process id 相关逻辑。
+   *
+   * @param {unknown} processId - processId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   activeSessionForProcessId(processId) {
     const session = this.lookup(processId);
 
     return isActiveCommandSession(session) ? session : null;
   }
 
+  /**
+   * 设置 set output delta handler 相关数据。
+   *
+   * @param {unknown} handler - handler 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   setOutputDeltaHandler(handler) {
     this.onOutputDelta = typeof handler === "function" ? handler : null;
 
     return this;
   }
 
+  /**
+   * 发送 emit output delta 相关数据。
+   *
+   * @param {unknown} session - session 参数。
+   * @param {unknown} stream - stream 参数。
+   * @param {unknown} chunk - chunk 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   emitOutputDelta(session, stream, chunk, options = {}) {
     if (!this.onOutputDelta || !session) {
       return;
@@ -152,6 +215,12 @@ export class CommandSessionManager {
     });
   }
 
+  /**
+   * 处理 resize 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   resize(request = {}) {
     const sessionId = normalizeSessionId(request.session_id ?? request.sessionId ?? request.process_id ?? request.processId);
     const session = this.lookup(sessionId);
@@ -174,7 +243,16 @@ export class CommandSessionManager {
   }
 }
 
+/**
+ * 定义 BlockedCommandSessionManager 类，封装当前模块的状态和行为。
+ */
 export class BlockedCommandSessionManager extends CommandSessionManager {
+  /**
+   * 启动 start 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   start(request = {}) {
     const normalized = normalizeExecCommandRequest(request);
 
@@ -186,6 +264,12 @@ export class BlockedCommandSessionManager extends CommandSessionManager {
     });
   }
 
+  /**
+   * 写入 write 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   write(request = {}) {
     return createCommandSessionFailure({
       sessionId: request.session_id ?? request.sessionId ?? request.process_id ?? request.processId ?? null,
@@ -195,13 +279,28 @@ export class BlockedCommandSessionManager extends CommandSessionManager {
   }
 }
 
+/**
+ * 定义 RealCommandSessionManager 类，封装当前模块的状态和行为。
+ */
 export class RealCommandSessionManager extends CommandSessionManager {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super(options);
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 30_000;
     this.maxOutputBytes = options.maxOutputBytes ?? 1_000_000;
   }
 
+  /**
+   * 启动 start 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   start(request = {}, options = {}) {
     const normalized = normalizeExecCommandRequest(request);
     const sessionId = options.sessionId ?? this.nextNumericId++;
@@ -317,6 +416,12 @@ export class RealCommandSessionManager extends CommandSessionManager {
     });
   }
 
+  /**
+   * 写入 write 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   write(request = {}) {
     const sessionId = normalizeSessionId(request.session_id ?? request.sessionId ?? request.process_id ?? request.processId);
     const session = this.lookup(sessionId);
@@ -372,6 +477,12 @@ export class RealCommandSessionManager extends CommandSessionManager {
     });
   }
 
+  /**
+   * 处理 terminate 相关逻辑。
+   *
+   * @param {unknown} sessionId - sessionId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   terminate(sessionId) {
     const session = this.lookup(sessionId);
 
@@ -394,6 +505,12 @@ export class RealCommandSessionManager extends CommandSessionManager {
   }
 }
 
+/**
+ * 归一化 normalize exec command request 相关数据。
+ *
+ * @param {unknown} request - request 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeExecCommandRequest(request = {}) {
   const command = request.cmd ?? request.command ?? "";
   const argv = Array.isArray(command) ? command.map(String) : null;
@@ -415,6 +532,13 @@ export function normalizeExecCommandRequest(request = {}) {
   };
 }
 
+/**
+ * 创建 create command session result 相关数据。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCommandSessionResult(session, options = {}) {
   const output = clampText(options.output ?? session.output ?? "", options.maxOutputChars);
 
@@ -435,6 +559,12 @@ export function createCommandSessionResult(session, options = {}) {
   };
 }
 
+/**
+ * 创建 create command session failure 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCommandSessionFailure(options = {}) {
   return {
     status: COMMAND_SESSION_STATUSES.FAILED,
@@ -453,6 +583,12 @@ export function createCommandSessionFailure(options = {}) {
   };
 }
 
+/**
+ * 处理 command session result to text 相关逻辑。
+ *
+ * @param {unknown} result - result 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function commandSessionResultToText(result = {}) {
   return JSON.stringify({
     chunk_id: result.chunk_id ?? null,
@@ -465,6 +601,12 @@ export function commandSessionResultToText(result = {}) {
   });
 }
 
+/**
+ * 归一化 normalize session id 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeSessionId(value) {
   const number = Number(value);
 
@@ -475,6 +617,12 @@ function normalizeSessionId(value) {
   return String(value ?? "");
 }
 
+/**
+ * 归一化 normalize terminal size 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeTerminalSize(value = {}) {
   const rows = Number(value.rows);
   const cols = Number(value.cols ?? value.columns);
@@ -485,6 +633,12 @@ function normalizeTerminalSize(value = {}) {
   };
 }
 
+/**
+ * 处理 seconds since 相关逻辑。
+ *
+ * @param {unknown} isoTimestamp - isoTimestamp 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function secondsSince(isoTimestamp) {
   const started = Date.parse(isoTimestamp ?? "");
 
@@ -495,10 +649,23 @@ function secondsSince(isoTimestamp) {
   return Math.max(0, (Date.now() - started) / 1000);
 }
 
+/**
+ * 处理 estimate token count 相关逻辑。
+ *
+ * @param {unknown} text - text 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function estimateTokenCount(text) {
   return Math.ceil(String(text ?? "").length / 4);
 }
 
+/**
+ * 处理 clamp text 相关逻辑。
+ *
+ * @param {unknown} text - text 参数。
+ * @param {unknown} maxChars - maxChars 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clampText(text, maxChars) {
   const value = String(text ?? "");
   const limit = Number(maxChars);
@@ -510,6 +677,13 @@ function clampText(text, maxChars) {
   return value.slice(0, Math.floor(limit));
 }
 
+/**
+ * 处理 session output 相关逻辑。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} maxBytes - maxBytes 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function sessionOutput(session, maxBytes) {
   const stdout = decodeChunks(session.stdoutChunks ?? [], maxBytes);
   const stderr = decodeChunks(session.stderrChunks ?? [], maxBytes);
@@ -517,6 +691,13 @@ function sessionOutput(session, maxBytes) {
   return `${stdout}${stderr}`;
 }
 
+/**
+ * 解码 decode chunks 相关数据。
+ *
+ * @param {unknown} chunks - chunks 参数。
+ * @param {unknown} maxBytes - maxBytes 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function decodeChunks(chunks, maxBytes = 1_000_000) {
   const buffer = Buffer.concat(chunks);
 
@@ -527,12 +708,24 @@ function decodeChunks(chunks, maxBytes = 1_000_000) {
   return buffer.subarray(0, maxBytes).toString("utf8");
 }
 
+/**
+ * 处理 clear timeout if needed 相关逻辑。
+ *
+ * @param {unknown} timeout - timeout 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clearTimeoutIfNeeded(timeout) {
   if (timeout) {
     clearTimeout(timeout);
   }
 }
 
+/**
+ * 判断是否为 is active command session 相关数据。
+ *
+ * @param {unknown} session - session 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isActiveCommandSession(session) {
   return session?.status === COMMAND_SESSION_STATUSES.RUNNING;
 }

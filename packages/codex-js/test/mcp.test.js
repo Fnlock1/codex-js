@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/mcp.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -473,6 +478,10 @@ test("McpRuntime creates dynamic tool definitions and calls tools", async () => 
 
   assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
   assert.equal(result.output, "read ok");
+  assert.equal(result.raw.capability.request.resource, "mcp");
+  assert.equal(result.raw.capability.request.action, "run");
+  assert.equal(result.raw.capability.request.metadata.server, "fs");
+  assert.equal(result.raw.capability.request.metadata.mcpTool, "read");
 });
 
 test("McpRuntime exposes discovery status and can be loaded into ToolRouter", async () => {
@@ -578,6 +587,11 @@ test("McpRuntime dynamic tool calls honor approval gate decisions", async () => 
   assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.FAILED);
   assert.equal(result.error, "blocked: prompt");
   assert.equal(result.raw.mcp.server, "fs");
+  assert.equal(result.raw.capability.request.resource, "mcp");
+  assert.equal(result.raw.capability.request.metadata.server, "fs");
+  assert.equal(result.raw.capability.request.metadata.mcpTool, "read");
+  assert.equal(result.raw.capability.decision, "prompt");
+  assert.equal(result.raw.approval.approvalRequest.resource_type, "tool");
 });
 
 test("McpRuntime defaults to a not-connected safe failure", async () => {
@@ -629,6 +643,12 @@ test("McpResourceToolHandler maps resource requests through injected runtime", a
   assert.match(result.output, /hello/);
 });
 
+/**
+ * 创建 create stdio mcp test server source 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createStdioMcpTestServerSource(options = {}) {
   const serverName = JSON.stringify(options.serverName ?? "stdio");
   const toolTextPrefix = JSON.stringify(options.toolTextPrefix ?? "echo:");

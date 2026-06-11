@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/items.js
+ *
+ *
+ */
 export {
   ITEM_STATUSES,
   ITEM_TYPES,

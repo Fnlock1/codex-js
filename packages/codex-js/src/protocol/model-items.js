@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/protocol/model-items.js
+ *
+ * thread、turn、item、user input、permission 等公共协议对象。
+ */
 export const RESPONSE_ITEM_TYPES = Object.freeze({
   MESSAGE: "message",
   REASONING: "reasoning",
@@ -37,6 +42,12 @@ export const IMAGE_DETAILS = Object.freeze({
   ORIGINAL: "original"
 });
 
+/**
+ * 创建 create response message item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseMessageItem(options = {}) {
   return omitNullish({
     id: options.id ?? null,
@@ -49,6 +60,12 @@ export function createResponseMessageItem(options = {}) {
   });
 }
 
+/**
+ * 创建 create response input message item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseInputMessageItem(options = {}) {
   return omitNullish({
     id: options.id ?? null,
@@ -60,6 +77,12 @@ export function createResponseInputMessageItem(options = {}) {
   });
 }
 
+/**
+ * 创建 create response reasoning item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseReasoningItem(options = {}) {
   return omitNullish({
     id: options.id ?? "",
@@ -70,6 +93,12 @@ export function createResponseReasoningItem(options = {}) {
   });
 }
 
+/**
+ * 创建 create response function call item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseFunctionCallItem(options = {}) {
   return omitNullish({
     id: options.id ?? null,
@@ -81,6 +110,12 @@ export function createResponseFunctionCallItem(options = {}) {
   });
 }
 
+/**
+ * 创建 create response custom tool call item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseCustomToolCallItem(options = {}) {
   return omitNullish({
     id: options.id ?? null,
@@ -92,6 +127,12 @@ export function createResponseCustomToolCallItem(options = {}) {
   });
 }
 
+/**
+ * 创建 create response function call output item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseFunctionCallOutputItem(options = {}) {
   return {
     type: RESPONSE_ITEM_TYPES.FUNCTION_CALL_OUTPUT,
@@ -102,6 +143,12 @@ export function createResponseFunctionCallOutputItem(options = {}) {
   };
 }
 
+/**
+ * 创建 create response custom tool call output item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseCustomToolCallOutputItem(options = {}) {
   return omitNullish({
     type: RESPONSE_ITEM_TYPES.CUSTOM_TOOL_CALL_OUTPUT,
@@ -113,6 +160,13 @@ export function createResponseCustomToolCallOutputItem(options = {}) {
   });
 }
 
+/**
+ * 创建 create response tool call output item 相关数据。
+ *
+ * @param {unknown} toolCall - toolCall 参数。
+ * @param {unknown} result - result 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createResponseToolCallOutputItem(toolCall, result = {}) {
   const output = result.output ?? "";
   const success = result.success ?? result.status !== "failed";
@@ -135,6 +189,12 @@ export function createResponseToolCallOutputItem(toolCall, result = {}) {
   });
 }
 
+/**
+ * 创建 create input text content 相关数据。
+ *
+ * @param {unknown} text - text 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createInputTextContent(text) {
   return {
     type: CONTENT_ITEM_TYPES.INPUT_TEXT,
@@ -142,6 +202,12 @@ export function createInputTextContent(text) {
   };
 }
 
+/**
+ * 创建 create output text content 相关数据。
+ *
+ * @param {unknown} text - text 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createOutputTextContent(text) {
   return {
     type: CONTENT_ITEM_TYPES.OUTPUT_TEXT,
@@ -149,6 +215,13 @@ export function createOutputTextContent(text) {
   };
 }
 
+/**
+ * 创建 create input image content 相关数据。
+ *
+ * @param {unknown} imageUrl - imageUrl 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createInputImageContent(imageUrl, options = {}) {
   return omitNullish({
     type: CONTENT_ITEM_TYPES.INPUT_IMAGE,
@@ -157,6 +230,13 @@ export function createInputImageContent(imageUrl, options = {}) {
   });
 }
 
+/**
+ * 创建 create function call output payload 相关数据。
+ *
+ * @param {unknown} output - output 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createFunctionCallOutputPayload(output, options = {}) {
   const body = Array.isArray(output)
     ? output.map(normalizeFunctionCallOutputContentItem)
@@ -168,6 +248,12 @@ export function createFunctionCallOutputPayload(output, options = {}) {
   };
 }
 
+/**
+ * 处理 function call output payload to wire value 相关逻辑。
+ *
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function functionCallOutputPayloadToWireValue(payload) {
   const normalized = createFunctionCallOutputPayload(payload?.body ?? payload, {
     success: payload?.success
@@ -176,6 +262,12 @@ export function functionCallOutputPayloadToWireValue(payload) {
   return normalized.body;
 }
 
+/**
+ * 处理 function call output payload to text 相关逻辑。
+ *
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function functionCallOutputPayloadToText(payload) {
   const body = payload?.body ?? payload;
 
@@ -193,6 +285,12 @@ export function functionCallOutputPayloadToText(payload) {
     .join("\n");
 }
 
+/**
+ * 归一化 normalize response item 相关数据。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeResponseItem(item) {
   if (!item || typeof item !== "object") {
     throw new TypeError("Response item must be an object.");
@@ -216,10 +314,22 @@ export function normalizeResponseItem(item) {
   }
 }
 
+/**
+ * 归一化 normalize response items 相关数据。
+ *
+ * @param {unknown} items - items 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeResponseItems(items) {
   return asArray(items).map(normalizeResponseItem);
 }
 
+/**
+ * 处理 response item to text 相关逻辑。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function responseItemToText(item) {
   if (!item || typeof item !== "object") {
     return "";
@@ -249,6 +359,12 @@ export function responseItemToText(item) {
   }
 }
 
+/**
+ * 归一化 normalize content items 相关数据。
+ *
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeContentItems(content) {
   return asArray(content).map((item) => {
     if (typeof item === "string") {
@@ -259,6 +375,12 @@ export function normalizeContentItems(content) {
   });
 }
 
+/**
+ * 归一化 normalize input content items 相关数据。
+ *
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeInputContentItems(content) {
   return asArray(content).map((item) => {
     if (typeof item === "string") {
@@ -269,6 +391,12 @@ export function normalizeInputContentItems(content) {
   });
 }
 
+/**
+ * 归一化 normalize reasoning summary 相关数据。
+ *
+ * @param {unknown} summary - summary 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeReasoningSummary(summary) {
   return asArray(summary).map((entry) => {
     if (typeof entry === "string") {
@@ -282,6 +410,12 @@ export function normalizeReasoningSummary(summary) {
   });
 }
 
+/**
+ * 归一化 normalize reasoning content 相关数据。
+ *
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeReasoningContent(content) {
   return asArray(content).map((entry) => {
     if (typeof entry === "string") {
@@ -295,6 +429,12 @@ export function normalizeReasoningContent(content) {
   });
 }
 
+/**
+ * 归一化 normalize function call output content item 相关数据。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeFunctionCallOutputContentItem(item) {
   if (typeof item === "string") {
     return createInputTextContent(item);
@@ -303,6 +443,12 @@ export function normalizeFunctionCallOutputContentItem(item) {
   return { ...item };
 }
 
+/**
+ * 处理 stringify arguments 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function stringifyArguments(value) {
   if (typeof value === "string") {
     return value;
@@ -311,6 +457,12 @@ function stringifyArguments(value) {
   return JSON.stringify(value ?? {});
 }
 
+/**
+ * 处理 as array 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function asArray(value) {
   if (value == null) {
     return [];
@@ -319,6 +471,13 @@ function asArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+/**
+ * 处理 content items to text 相关逻辑。
+ *
+ * @param {unknown} items - items 参数。
+ * @param {unknown} allowedTypes - allowedTypes 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function contentItemsToText(items, allowedTypes) {
   return asArray(items)
     .filter((item) => allowedTypes.includes(item?.type) && String(item.text ?? "").trim())
@@ -326,6 +485,12 @@ function contentItemsToText(items, allowedTypes) {
     .join("\n");
 }
 
+/**
+ * 处理 omit nullish 相关逻辑。
+ *
+ * @param {unknown} object - object 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function omitNullish(object) {
   return Object.fromEntries(
     Object.entries(object).filter(([, value]) => value != null)

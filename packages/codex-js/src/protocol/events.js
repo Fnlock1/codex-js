@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/protocol/events.js
+ *
+ * thread、turn、item、user input、permission 等公共协议对象。
+ */
 export const EVENT_TYPES = Object.freeze({
   THREAD_STARTED: "thread.started",
   TURN_STARTED: "turn.started",
@@ -9,6 +14,12 @@ export const EVENT_TYPES = Object.freeze({
   ERROR: "error"
 });
 
+/**
+ * 创建 create thread started event 相关数据。
+ *
+ * @param {unknown} threadId - threadId 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createThreadStartedEvent(threadId) {
   return {
     type: EVENT_TYPES.THREAD_STARTED,
@@ -16,12 +27,22 @@ export function createThreadStartedEvent(threadId) {
   };
 }
 
+/**
+ * 创建 create turn started event 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTurnStartedEvent() {
   return {
     type: EVENT_TYPES.TURN_STARTED
   };
 }
 
+/**
+ * 创建 create turn completed event 相关数据。
+ *
+ * @param {unknown} usage - usage 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTurnCompletedEvent(usage = emptyUsage()) {
   return {
     type: EVENT_TYPES.TURN_COMPLETED,
@@ -29,6 +50,12 @@ export function createTurnCompletedEvent(usage = emptyUsage()) {
   };
 }
 
+/**
+ * 创建 create turn failed event 相关数据。
+ *
+ * @param {unknown} error - error 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTurnFailedEvent(error) {
   return {
     type: EVENT_TYPES.TURN_FAILED,
@@ -36,6 +63,12 @@ export function createTurnFailedEvent(error) {
   };
 }
 
+/**
+ * 创建 create item started event 相关数据。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createItemStartedEvent(item) {
   return {
     type: EVENT_TYPES.ITEM_STARTED,
@@ -43,6 +76,12 @@ export function createItemStartedEvent(item) {
   };
 }
 
+/**
+ * 创建 create item updated event 相关数据。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createItemUpdatedEvent(item) {
   return {
     type: EVENT_TYPES.ITEM_UPDATED,
@@ -50,6 +89,12 @@ export function createItemUpdatedEvent(item) {
   };
 }
 
+/**
+ * 创建 create item completed event 相关数据。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createItemCompletedEvent(item) {
   return {
     type: EVENT_TYPES.ITEM_COMPLETED,
@@ -57,6 +102,12 @@ export function createItemCompletedEvent(item) {
   };
 }
 
+/**
+ * 创建 create error event 相关数据。
+ *
+ * @param {unknown} error - error 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createErrorEvent(error) {
   return {
     type: EVENT_TYPES.ERROR,
@@ -64,6 +115,10 @@ export function createErrorEvent(error) {
   };
 }
 
+/**
+ * 处理 empty usage 相关逻辑。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function emptyUsage() {
   return {
     input_tokens: 0,
@@ -73,6 +128,12 @@ export function emptyUsage() {
   };
 }
 
+/**
+ * 判断是否为 is thread event 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function isThreadEvent(value) {
   return Boolean(
     value &&
@@ -81,6 +142,12 @@ export function isThreadEvent(value) {
   );
 }
 
+/**
+ * 归一化 normalize error 相关数据。
+ *
+ * @param {unknown} error - error 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeError(error) {
   if (error && typeof error.message === "string") {
     return {

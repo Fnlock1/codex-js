@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/index.js
+ *
+ * 公共导出入口，集中暴露 codex-js 的 runtime、协议、工具和服务 API。
+ */
 export { Codex } from "./codex.js";
 export {
   CONFIG_SCHEMA_VERSION,
@@ -36,6 +41,30 @@ export {
   normalizeSandboxRoots,
   pathIsInsideRoot
 } from "./sandbox/policy.js";
+export {
+  CAPABILITY_ACTIONS,
+  CAPABILITY_DECISIONS,
+  CAPABILITY_RESOURCES,
+  CAPABILITY_RISKS,
+  approvalActionForCapability,
+  approvalResourceTypeForCapability,
+  approvalSubjectForCapability,
+  capabilityRequestToApprovalRequest,
+  capabilityRiskFromCommand,
+  checkCapability,
+  checkCapabilityApproval,
+  checkCapabilitySandbox,
+  createApplyPatchCapabilityRequest,
+  createCapabilityDecision,
+  createCapabilityRequest,
+  createExecCapabilityRequest,
+  createFilesystemWriteCapabilityRequest,
+  createMcpToolCapabilityRequest,
+  createNetworkCapabilityRequest,
+  createProcessSpawnCapabilityRequest,
+  createToolCapabilityRequest,
+  normalizeCapabilityRisk
+} from "./policy/capability.js";
 export {
   APPLY_PATCH_HUNK_TYPES,
   APPLY_PATCH_MARKERS,
@@ -269,6 +298,8 @@ export {
   createListMcpResourceTemplatesToolSpec,
   createListMcpResourcesToolSpec,
   createListFilesToolSpec,
+  createMemoryToolSpec,
+  createPlanExpertsToolSpec,
   createReadMcpResourceToolSpec,
   createReadFileToolSpec,
   createRequestPermissionsToolSpec,
@@ -287,7 +318,9 @@ export {
   GoalToolHandler,
   HostedProviderToolHandler,
   InMemoryGoalStore,
+  MemoryToolHandler,
   McpResourceToolHandler,
+  PlanExpertsToolHandler,
   PlaceholderToolHandler,
   RequestPermissionsToolHandler,
   ShellCommandToolHandler,
@@ -305,6 +338,21 @@ export {
   createAgentRecord,
   normalizeAgentError
 } from "./agents/coordinator.js";
+export {
+  DEFAULT_EXPERT_PROFILE_ID,
+  DEFAULT_EXPERT_PROFILES,
+  formatExpertAgentPrompt,
+  getExpertProfile,
+  listDefaultExpertProfiles,
+  normalizeExpertProfile,
+  normalizeExpertProfiles,
+  selectExpertProfile
+} from "./agents/expert-profiles.js";
+export {
+  DEFAULT_EXPERT_PLAN_LIMIT,
+  formatExpertPlan,
+  planExperts
+} from "./agents/expert-planner.js";
 export {
   HttpHostedToolProvider,
   createHttpHostedToolProvider
@@ -545,6 +593,21 @@ export {
   patchFromToolArguments,
   normalizeToolArguments
 } from "./tools/runtime.js";
+export {
+  DEFAULT_MEMORY_RECALL_LIMIT,
+  MEMORY_SCHEMA_VERSION,
+  MEMORY_SCOPES,
+  MemoryStore,
+  createMemoryRecord,
+  createMemoryStoreRecord,
+  defaultMemoryStoreDirectory,
+  formatRecalledMemories,
+  memoryIsVisible,
+  normalizeMemoryScope,
+  normalizeMemoryStoreRecord,
+  recallMemories,
+  tokenizeMemoryText
+} from "./memory/store.js";
 export {
   ITEM_STATUSES,
   ITEM_TYPES,

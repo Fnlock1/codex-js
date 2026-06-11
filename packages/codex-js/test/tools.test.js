@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/tools.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -14,6 +19,7 @@ import {
   GoalToolHandler,
   HostedProviderToolHandler,
   InMemoryGoalStore,
+  PlanExpertsToolHandler,
   PermissionGrantStore,
   PlaceholderToolHandler,
   ServerRequestStore,
@@ -144,11 +150,16 @@ test("built-in tool specs expose shell and apply_patch tools", () => {
     "list_mcp_resources",
     "list_mcp_resource_templates",
     "read_mcp_resource",
+    "plan_experts",
     "spawn_agent",
     "wait_agent",
     "get_goal",
     "create_goal",
-    "update_goal"
+    "update_goal",
+    "remember",
+    "recall_memory",
+    "forget_memory",
+    "list_memories"
   ]);
   assert.equal(definitions[0].metadata.requiresApproval, true);
 });
@@ -177,6 +188,14 @@ test("ToolRouter runs registered handlers", async () => {
         name: "test_tool",
         description: "Test tool",
         handler: {
+          /**
+           * 执行当前对象负责的核心流程。
+           *
+           * 这是异步流程，调用方需要等待 Promise 完成。
+           *
+           * @param {unknown} request - request 参数。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async run(request) {
             return createToolCallResult({
               callId: request.call_id,
@@ -387,6 +406,12 @@ test("ToolRouter blocks tools through approval gate metadata", async () => {
           requiresApproval: true
         },
         handler: {
+          /**
+           * 执行当前对象负责的核心流程。
+           *
+           * 这是异步流程，调用方需要等待 Promise 完成。
+           * @returns {unknown} 返回处理后的结果。
+           */
           async run() {
             return createToolCallResult({
               output: "should not run"
@@ -472,6 +497,12 @@ test("ShellCommandToolHandler marks non-zero command exits as failed tool result
   const handler = new ShellCommandToolHandler({
     realExecution: true,
     execRunner: {
+      /**
+       * 执行 run command 相关数据。
+       *
+       * 这是异步生成器，会按需产出事件或结果。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async *runCommand() {
         return {
           output: {
@@ -497,6 +528,37 @@ test("ShellCommandToolHandler marks non-zero command exits as failed tool result
   assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.FAILED);
   assert.equal(result.error, "exit_code:1");
   assert.equal(result.output, "ParserError");
+});
+
+test("ShellCommandToolHandler records capability decisions for blocked real commands", async () => {
+  const handler = new ShellCommandToolHandler({
+    realExecution: true,
+    approvalGate: new ApprovalGate({
+      policy: new ApprovalPolicy({
+        defaultDecision: APPROVAL_DECISIONS.PROMPT
+      })
+    }),
+    execRunner: {
+      async *runCommand() {
+        throw new Error("should not execute");
+      }
+    }
+  });
+  const result = await handler.run(createToolCallRequest({
+    callId: "call-1",
+    name: "shell_command",
+    arguments: {
+      command: "npm test",
+      cwd: "/workspace"
+    }
+  }));
+
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.FAILED);
+  assert.equal(result.error, "blocked: prompt");
+  assert.equal(result.raw.capability.request.resource, "exec");
+  assert.equal(result.raw.capability.request.action, "execute");
+  assert.equal(result.raw.capability.decision, "prompt");
+  assert.equal(result.raw.approval.approvalRequest.resource_type, "exec");
 });
 
 test("SafeToolCallRuntime view_image reads local image files", async () => {
@@ -578,7 +640,23 @@ test("SafeToolCallRuntime model-visible specs include only non-deferred built-in
   assert.equal(names.includes("view_image"), true);
   assert.equal(names.includes("tool_search"), false);
   assert.equal(names.includes("list_mcp_resources"), false);
+  assert.equal(names.includes("plan_experts"), false);
+  assert.equal(names.includes("spawn_agent"), false);
+  assert.equal(names.includes("wait_agent"), false);
   assert.equal(names.includes("get_goal"), false);
+});
+
+test("SafeToolCallRuntime exposes sub-agent tools only in expert-team mode", () => {
+  const runtime = new SafeToolCallRuntime();
+  const defaultNames = runtime.router.modelVisibleSpecs().map((spec) => spec.name);
+  const expertTeamNames = runtime.router.modelVisibleSpecs({
+    expertTeam: true
+  }).map((spec) => spec.name);
+
+  assert.equal(defaultNames.includes("plan_experts"), false);
+  assert.equal(expertTeamNames.includes("plan_experts"), true);
+  assert.equal(expertTeamNames.includes("spawn_agent"), true);
+  assert.equal(expertTeamNames.includes("wait_agent"), true);
 });
 
 test("ToolSearchToolHandler searches registered tool metadata", async () => {
@@ -605,6 +683,27 @@ test("ToolSearchToolHandler searches registered tool metadata", async () => {
   assert.equal(payload.matches.some((entry) => entry.name === "git_diff"), true);
 });
 
+test("PlanExpertsToolHandler creates a multi-expert execution plan", async () => {
+  const result = await new PlanExpertsToolHandler().run(createToolCallRequest({
+    callId: "plan",
+    name: "plan_experts",
+    arguments: {
+      task: "帮我写一个 B 站风格官网 HTML 页面",
+      limit: 4
+    }
+  }));
+  const payload = JSON.parse(result.output);
+  const expertIds = payload.plan.assignments.map((assignment) => assignment.expert.id);
+
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
+  assert.equal(payload.plan.task, "帮我写一个 B 站风格官网 HTML 页面");
+  assert.equal(payload.plan.spawnSequence.length, payload.plan.assignments.length);
+  assert.equal(payload.plan.waitSequence.length, payload.plan.assignments.length);
+  assert.equal(expertIds[0], "fullstack");
+  assert.equal(expertIds.includes("backend"), false);
+  assert.match(payload.text, /Assignments:/);
+});
+
 test("sub-agent handlers create and read local agent records", async () => {
   const spawnHandler = new SpawnAgentToolHandler();
   const waitHandler = new WaitAgentToolHandler({
@@ -615,7 +714,8 @@ test("sub-agent handlers create and read local agent records", async () => {
     name: "spawn_agent",
     arguments: {
       task: "Inspect tests",
-      context: "tools"
+      context: "tools",
+      expert: "tester"
     }
   }), {
     threadId: "thread-1"
@@ -632,9 +732,41 @@ test("sub-agent handlers create and read local agent records", async () => {
 
   assert.equal(spawned.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
   assert.equal(spawnedPayload.status, "created");
+  assert.equal(spawnedPayload.expert.id, "tester");
+  assert.equal(spawned.raw.agent.metadata.expert.id, "tester");
   assert.equal(waited.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
   assert.equal(waitedPayload.agent_id, spawnedPayload.agent_id);
   assert.equal(waitedPayload.status, "created");
+});
+
+test("spawn_agent preserves dynamic expert profiles generated by the leader", async () => {
+  const spawnHandler = new SpawnAgentToolHandler();
+  const spawned = await spawnHandler.run(createToolCallRequest({
+    callId: "spawn-dynamic",
+    name: "spawn_agent",
+    arguments: {
+      task: "检查视频播放弹窗",
+      expert_profile: {
+        id: "video_playback",
+        name: "视频播放体验专家",
+        role: "video_playback_expert",
+        description: "负责视频播放体验。",
+        dynamic: true,
+        prompt: "AI 生成动态专家提示词：只检查播放入口、弹窗、试看和状态反馈。",
+        instructions: ["关注播放流程"],
+        keywords: ["视频", "播放"]
+      },
+      context: "Leader 动态创建"
+    }
+  }), {
+    threadId: "thread-dynamic"
+  });
+  const payload = JSON.parse(spawned.output);
+
+  assert.equal(spawned.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
+  assert.equal(payload.expert.id, "video_playback");
+  assert.equal(spawned.raw.agent.metadata.expert.dynamic, true);
+  assert.match(spawned.raw.agent.metadata.expert.prompt, /AI 生成动态专家提示词/);
 });
 
 test("goal handlers manage per-thread in-memory goals", async () => {
@@ -691,6 +823,12 @@ test("hosted provider handler delegates only when a provider is configured", asy
   }));
   const configured = await new HostedProviderToolHandler({
     kind: "web_search",
+    /**
+     * 处理 provider 相关逻辑。
+     *
+     * @param {unknown} args - args 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     provider(args) {
       return {
         results: [
@@ -713,6 +851,39 @@ test("hosted provider handler delegates only when a provider is configured", asy
   assert.equal(missing.error, "provider_not_configured");
   assert.equal(configured.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
   assert.equal(JSON.parse(configured.output).results[0].title, "codex");
+  assert.equal(configured.raw.capability.request.resource, "network");
+  assert.equal(configured.raw.capability.request.metadata.kind, "web_search");
+});
+
+test("hosted provider handler records capability approval blocks", async () => {
+  let called = false;
+  const result = await new HostedProviderToolHandler({
+    kind: "web_search",
+    provider() {
+      called = true;
+      return {
+        ok: true
+      };
+    },
+    approvalGate: new ApprovalGate({
+      policy: new ApprovalPolicy({
+        defaultDecision: APPROVAL_DECISIONS.PROMPT
+      })
+    })
+  }).run(createToolCallRequest({
+    callId: "hosted-approval",
+    name: "web_search",
+    arguments: {
+      query: "codex"
+    }
+  }));
+
+  assert.equal(called, false);
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.FAILED);
+  assert.equal(result.error, "approval_required");
+  assert.equal(result.raw.approval.approvalRequest.resource_type, "tool");
+  assert.equal(result.raw.capability.decision, "prompt");
+  assert.equal(result.raw.capability.request.resource, "network");
 });
 
 test("HttpHostedToolProvider posts hosted tool payloads", async () => {
@@ -732,10 +903,20 @@ test("HttpHostedToolProvider posts hosted tool payloads", async () => {
       return {
         ok: true,
         headers: {
+          /**
+           * 获取 get 相关数据。
+           * @returns {unknown} 返回处理后的结果。
+           */
           get() {
             return "application/json";
           }
         },
+        /**
+         * 处理 json 相关逻辑。
+         *
+         * 这是异步流程，调用方需要等待 Promise 完成。
+         * @returns {unknown} 返回处理后的结果。
+         */
         async json() {
           return {
             ok: true
@@ -845,6 +1026,14 @@ test("file tools honor sandbox read roots", async () => {
 test("git tools route status and diff through exec runner", async () => {
   const execRunner = {
     commands: [],
+    /**
+     * 执行 run command 相关数据。
+     *
+     * 这是异步生成器，会按需产出事件或结果。
+     *
+     * @param {unknown} request - request 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     async *runCommand(request) {
       this.commands.push(request.command);
       return {
@@ -876,10 +1065,40 @@ test("git tools route status and diff through exec runner", async () => {
 
   assert.equal(status.output, "ran: git status --short --branch");
   assert.equal(diff.output, "ran: git diff --staged -- \"src/app.js\"");
+  assert.equal(status.raw.capability.request.resource, "exec");
+  assert.equal(status.raw.capability.request.action, "execute");
+  assert.equal(status.raw.capability.request.metadata.tool, "git_status");
+  assert.equal(diff.raw.capability.request.metadata.tool, "git_diff");
   assert.deepEqual(execRunner.commands, [
     "git status --short --branch",
     "git diff --staged -- \"src/app.js\""
   ]);
+});
+
+test("git tools record capability decisions when approval blocks execution", async () => {
+  const result = await new GitStatusToolHandler({
+    requiresApproval: true,
+    approvalGate: new ApprovalGate({
+      policy: new ApprovalPolicy({
+        defaultDecision: APPROVAL_DECISIONS.PROMPT
+      })
+    }),
+    execRunner: {
+      async *runCommand() {
+        throw new Error("should not execute");
+      }
+    }
+  }).run(createToolCallRequest({
+    callId: "status",
+    name: "git_status"
+  }));
+
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.FAILED);
+  assert.equal(result.error, "blocked: prompt");
+  assert.equal(result.raw.capability.request.resource, "exec");
+  assert.equal(result.raw.capability.request.metadata.tool, "git_status");
+  assert.equal(result.raw.capability.decision, "prompt");
+  assert.equal(result.raw.approval.approvalRequest.resource_type, "exec");
 });
 
 test("SafeToolCallRuntime parses apply_patch dry-runs", async () => {
@@ -1028,6 +1247,9 @@ test("SafeToolCallRuntime blocks apply_patch writes when approval gate prompts",
   assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.FAILED);
   assert.equal(result.error, "blocked: prompt");
   assert.equal(result.raw.approval.approvalRequest.resource_type, "apply_patch");
+  assert.equal(result.raw.capability.request.resource, "file");
+  assert.equal(result.raw.capability.request.action, "write");
+  assert.equal(result.raw.capability.decision, "prompt");
 });
 
 test("SafeToolCallRuntime allows apply_patch writes when approval gate allows", async () => {
@@ -1063,6 +1285,8 @@ test("SafeToolCallRuntime allows apply_patch writes when approval gate allows", 
 
     assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
     assert.equal(await readFile(path.join(dir, "created.txt"), "utf8"), "created");
+    assert.equal(result.raw.capability.request.resource, "file");
+    assert.equal(result.raw.capability.decision, "allow");
   } finally {
     await rm(dir, {
       recursive: true,
@@ -1134,6 +1358,12 @@ test("permissions client responses normalize scope and ignore unrequested grants
 test("SafeToolCallRuntime request_permissions creates approval server requests", async () => {
   const serverRequests = [];
   const serverRequestStore = new ServerRequestStore({
+    /**
+     * 处理 on request 相关逻辑。
+     *
+     * @param {unknown} request - request 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     onRequest(request) {
       serverRequests.push(request);
     }

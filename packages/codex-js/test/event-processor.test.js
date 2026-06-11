@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/event-processor.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -54,9 +59,19 @@ test("HumanExecEventProcessor renders failed turn events", async () => {
   assert.match(output.text, /error: model unavailable/);
 });
 
+/**
+ * 创建 create writable capture 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createWritableCapture() {
   return {
     text: "",
+    /**
+     * 写入 write 相关数据。
+     *
+     * @param {unknown} chunk - chunk 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     write(chunk) {
       this.text += String(chunk);
       return true;

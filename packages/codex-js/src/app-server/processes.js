@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/processes.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import { spawn } from "node:child_process";
 import path from "node:path";
 import {
@@ -28,7 +33,16 @@ export const PROCESS_STATUSES = Object.freeze({
   KILLED: "killed"
 });
 
+/**
+ * 定义 BlockedProcessRuntime 类，封装当前模块的状态和行为。
+ */
 export class BlockedProcessRuntime {
+  /**
+   * 处理 spawn 相关逻辑。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   spawn(params = {}) {
     const request = normalizeProcessSpawnParams(params);
 
@@ -42,6 +56,12 @@ export class BlockedProcessRuntime {
     );
   }
 
+  /**
+   * 写入 write stdin 相关数据。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   writeStdin(params = {}) {
     throw createAppServerProtocolError(
       APP_SERVER_ERROR_CODES.INVALID_PARAMS,
@@ -53,6 +73,12 @@ export class BlockedProcessRuntime {
     );
   }
 
+  /**
+   * 处理 resize pty 相关逻辑。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   resizePty(params = {}) {
     throw createAppServerProtocolError(
       APP_SERVER_ERROR_CODES.INVALID_PARAMS,
@@ -64,6 +90,12 @@ export class BlockedProcessRuntime {
     );
   }
 
+  /**
+   * 处理 kill 相关逻辑。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   kill(params = {}) {
     throw createAppServerProtocolError(
       APP_SERVER_ERROR_CODES.INVALID_PARAMS,
@@ -76,7 +108,15 @@ export class BlockedProcessRuntime {
   }
 }
 
+/**
+ * 定义 RealProcessRuntime 类，封装当前模块的状态和行为。
+ */
 export class RealProcessRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.sessions = new Map();
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 30_000;
@@ -85,6 +125,12 @@ export class RealProcessRuntime {
     this.onExited = options.onExited ?? null;
   }
 
+  /**
+   * 处理 spawn 相关逻辑。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   spawn(params = {}) {
     const request = normalizeProcessSpawnParams(params, {
       defaultTimeoutMs: this.defaultTimeoutMs,
@@ -181,6 +227,12 @@ export class RealProcessRuntime {
     return {};
   }
 
+  /**
+   * 写入 write stdin 相关数据。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   writeStdin(params = {}) {
     const processHandle = normalizeProcessHandle(params.processHandle ?? params.process_handle);
     const session = this.requireSession(processHandle);
@@ -232,6 +284,12 @@ export class RealProcessRuntime {
     return {};
   }
 
+  /**
+   * 处理 resize pty 相关逻辑。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   resizePty(params = {}) {
     const processHandle = normalizeProcessHandle(params.processHandle ?? params.process_handle);
     const session = this.requireSession(processHandle);
@@ -240,6 +298,12 @@ export class RealProcessRuntime {
     return {};
   }
 
+  /**
+   * 处理 kill 相关逻辑。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   kill(params = {}) {
     const processHandle = normalizeProcessHandle(params.processHandle ?? params.process_handle);
     const session = this.requireSession(processHandle);
@@ -249,16 +313,34 @@ export class RealProcessRuntime {
     return {};
   }
 
+  /**
+   * 获取 get 相关数据。
+   *
+   * @param {unknown} processHandle - processHandle 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   get(processHandle) {
     return this.sessions.get(String(processHandle)) ?? null;
   }
 
+  /**
+   * 处理 active session 相关逻辑。
+   *
+   * @param {unknown} processHandle - processHandle 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   activeSession(processHandle) {
     const session = this.get(processHandle);
 
     return session?.status === PROCESS_STATUSES.RUNNING ? session : null;
   }
 
+  /**
+   * 处理 require session 相关逻辑。
+   *
+   * @param {unknown} processHandle - processHandle 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   requireSession(processHandle) {
     const session = this.get(processHandle);
 
@@ -276,6 +358,14 @@ export class RealProcessRuntime {
     return session;
   }
 
+  /**
+   * 处理 record output 相关逻辑。
+   *
+   * @param {unknown} session - session 参数。
+   * @param {unknown} stream - stream 参数。
+   * @param {unknown} chunk - chunk 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   recordOutput(session, stream, chunk) {
     const cap = session.request.outputBytesCap;
     const capped = clampBufferForStream(session, stream, chunk, cap);
@@ -297,6 +387,15 @@ export class RealProcessRuntime {
     }
   }
 
+  /**
+   * 发送 emit output delta 相关数据。
+   *
+   * @param {unknown} session - session 参数。
+   * @param {unknown} stream - stream 参数。
+   * @param {unknown} chunk - chunk 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   emitOutputDelta(session, stream, chunk, options = {}) {
     if (!this.onOutputDelta) {
       return;
@@ -310,6 +409,12 @@ export class RealProcessRuntime {
     });
   }
 
+  /**
+   * 发送 emit exited 相关数据。
+   *
+   * @param {unknown} session - session 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   emitExited(session) {
     if (!this.onExited) {
       return;
@@ -319,6 +424,12 @@ export class RealProcessRuntime {
   }
 }
 
+/**
+ * 创建 create process output delta notification params 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createProcessOutputDeltaNotificationParams(options = {}) {
   return {
     processHandle: String(options.processHandle ?? ""),
@@ -328,6 +439,12 @@ export function createProcessOutputDeltaNotificationParams(options = {}) {
   };
 }
 
+/**
+ * 创建 create process exited notification params 相关数据。
+ *
+ * @param {unknown} session - session 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createProcessExitedNotificationParams(session = {}) {
   const request = session.request ?? {};
   const streamed = Boolean(request.streamStdoutStderr);
@@ -342,6 +459,13 @@ export function createProcessExitedNotificationParams(session = {}) {
   };
 }
 
+/**
+ * 归一化 normalize process spawn params 相关数据。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} defaults - defaults 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeProcessSpawnParams(params = {}, defaults = {}) {
   const command = params.command;
 
@@ -406,6 +530,12 @@ export function normalizeProcessSpawnParams(params = {}, defaults = {}) {
   };
 }
 
+/**
+ * 归一化 normalize process handle 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeProcessHandle(value) {
   const processHandle = String(value ?? "");
 
@@ -422,6 +552,12 @@ export function normalizeProcessHandle(value) {
   return processHandle;
 }
 
+/**
+ * 归一化 normalize process terminal size 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeProcessTerminalSize(value = {}) {
   const rows = Number(value.rows);
   const cols = Number(value.cols ?? value.columns);
@@ -442,6 +578,12 @@ export function normalizeProcessTerminalSize(value = {}) {
   };
 }
 
+/**
+ * 归一化 normalize process env 相关数据。
+ *
+ * @param {unknown} env - env 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeProcessEnv(env) {
   if (env == null) {
     return process.env;
@@ -466,6 +608,13 @@ function normalizeProcessEnv(env) {
   return merged;
 }
 
+/**
+ * 处理 require process param 相关逻辑。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function requireProcessParam(params, name) {
   const value = params?.[name];
 
@@ -483,6 +632,15 @@ function requireProcessParam(params, name) {
   return value;
 }
 
+/**
+ * 处理 clamp buffer for stream 相关逻辑。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} stream - stream 参数。
+ * @param {unknown} chunk - chunk 参数。
+ * @param {unknown} cap - cap 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clampBufferForStream(session, stream, chunk, cap) {
   if (cap == null) {
     return {
@@ -503,6 +661,12 @@ function clampBufferForStream(session, stream, chunk, cap) {
   };
 }
 
+/**
+ * 处理 clear timeout if needed 相关逻辑。
+ *
+ * @param {unknown} timeout - timeout 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clearTimeoutIfNeeded(timeout) {
   if (timeout) {
     clearTimeout(timeout);

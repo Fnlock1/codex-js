@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/server.js
+ *
+ * app-server 总控，分发 thread、turn、fs、process、command、MCP 等 RPC 方法。
+ */
 import { randomUUID } from "node:crypto";
 import { platform } from "node:os";
 import {
@@ -13,6 +18,10 @@ import {
   commandSessionResultToText
 } from "../exec/session.js";
 import { McpRuntime } from "../mcp/runtime.js";
+import {
+  capabilityRequestToApprovalRequest,
+  createProcessSpawnCapabilityRequest
+} from "../policy/capability.js";
 import { SANDBOX_DECISIONS } from "../sandbox/policy.js";
 import { SessionStore } from "../session-store.js";
 import {
@@ -35,7 +44,8 @@ import {
 } from "./permissions.js";
 import {
   BlockedProcessRuntime,
-  createProcessOutputDeltaNotificationParams
+  createProcessOutputDeltaNotificationParams,
+  normalizeProcessSpawnParams
 } from "./processes.js";
 import {
   APP_SERVER_ERROR_CODES,
@@ -71,7 +81,15 @@ import {
   normalizeThreadName
 } from "./thread-state.js";
 
+/**
+ * 定义 CodexAppServer 类，封装当前模块的状态和行为。
+ */
 export class CodexAppServer {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.codex = options.codex ?? new Codex(options.codexOptions ?? options);
     this.mcpRuntime = options.mcpRuntime ?? new McpRuntime();
@@ -173,6 +191,14 @@ export class CodexAppServer {
     }
   }
 
+  /**
+   * 处理传入请求或消息。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} message - message 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async handle(message) {
     let request;
 
@@ -201,6 +227,14 @@ export class CodexAppServer {
     }
   }
 
+  /**
+   * 根据请求方法分发到具体处理函数。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async dispatch(request) {
     if (request.method === APP_SERVER_METHODS.INITIALIZE) {
       return this.initialize(request.params);
@@ -326,6 +360,12 @@ export class CodexAppServer {
     }
   }
 
+  /**
+   * 初始化服务端状态并返回运行环境信息。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   initialize(params = {}) {
     if (this.initialized) {
       throw createAppServerProtocolError(
@@ -346,6 +386,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread start 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadStart(params = {}) {
     const thread = this.codex.startThread({
       workingDirectory: params.cwd,
@@ -376,6 +424,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread resume 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadResume(params = {}) {
     const threadId = requireParam(params, "threadId");
     const thread = this.codex.resumeThread(threadId, {
@@ -406,6 +462,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread fork 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadFork(params = {}) {
     const threadId = requireParam(params, "threadId");
     const forkedSession = await this.sessionStore.fork(threadId, {
@@ -449,6 +513,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread read 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadRead(params = {}) {
     const threadId = requireParam(params, "threadId");
     const thread = this.loadedThreads.get(threadId) ?? this.codex.resumeThread(threadId);
@@ -466,6 +538,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadList(params = {}) {
     const listed = await this.sessionStore.list({
       archived: params.archived === true,
@@ -494,6 +574,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread turns list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadTurnsList(params = {}) {
     const threadId = requireParam(params, "threadId");
     const thread = this.loadedThreads.get(threadId) ?? this.codex.resumeThread(threadId);
@@ -507,6 +595,14 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 thread archive 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadArchive(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.archive(threadId);
@@ -534,6 +630,14 @@ export class CodexAppServer {
     return {};
   }
 
+  /**
+   * 处理 thread unarchive 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadUnarchive(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.unarchive(threadId);
@@ -571,6 +675,12 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread loaded list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadLoadedList() {
     const threads = [];
 
@@ -592,6 +702,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread unsubscribe 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadUnsubscribe(params = {}) {
     const threadId = requireParam(params, "threadId");
 
@@ -614,6 +732,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread inject items 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadInjectItems(params = {}) {
     const threadId = requireParam(params, "threadId");
     const items = params.items;
@@ -657,6 +783,14 @@ export class CodexAppServer {
     return {};
   }
 
+  /**
+   * 处理 thread name set 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadNameSet(params = {}) {
     const threadId = requireParam(params, "threadId");
     const name = normalizeThreadName(params.name ?? params.title);
@@ -707,6 +841,14 @@ export class CodexAppServer {
     return {};
   }
 
+  /**
+   * 处理 thread goal set 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadGoalSet(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.load(threadId, {
@@ -760,6 +902,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread goal get 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadGoalGet(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.load(threadId, {
@@ -780,6 +930,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread goal clear 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadGoalClear(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.load(threadId, {
@@ -814,6 +972,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread rollback 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadRollback(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.rollback(threadId, {
@@ -841,6 +1007,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread metadata update 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadMetadataUpdate(params = {}) {
     const threadId = requireParam(params, "threadId");
     const metadata = params.metadata ?? params.patch ?? {};
@@ -881,6 +1055,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 thread settings update 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadSettingsUpdate(params = {}) {
     return await this.threadMetadataUpdate({
       threadId: params.threadId,
@@ -892,6 +1074,14 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 thread compact start 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async threadCompactStart(params = {}) {
     const threadId = requireParam(params, "threadId");
     const session = await this.sessionStore.load(threadId, {
@@ -930,6 +1120,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 turn start 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async turnStart(params = {}) {
     const threadId = requireParam(params, "threadId");
     const input = params.input ?? params.prompt ?? "";
@@ -986,6 +1184,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 turn steer 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async turnSteer(params = {}) {
     const threadId = requireParam(params, "threadId");
     const active = this.activeTurns.get(threadId);
@@ -1046,6 +1252,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 turn interrupt 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async turnInterrupt(params = {}) {
     const threadId = requireParam(params, "threadId");
     const turnId = requireAnyParam(params, ["turnId", "turn_id"]);
@@ -1083,12 +1297,26 @@ export class CodexAppServer {
     return {};
   }
 
+  /**
+   * 处理 mcp server status list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async mcpServerStatusList() {
     return {
       servers: await this.mcpRuntime.listServerStatuses()
     };
   }
 
+  /**
+   * 处理 permission profile list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async permissionProfileList(params = {}) {
     return listPermissionProfiles({
       cursor: params.cursor,
@@ -1097,6 +1325,14 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 config read 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async configRead(params = {}) {
     return await readAppServerConfig({
       configPath: params.configPath ?? params.config_path ?? this.configPath,
@@ -1107,6 +1343,14 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 config value write 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async configValueWrite(params = {}) {
     return await writeAppServerConfigValue(params, {
       configPath: this.configPath,
@@ -1114,6 +1358,14 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 config batch write 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async configBatchWrite(params = {}) {
     return await batchWriteAppServerConfig(params, {
       configPath: this.configPath,
@@ -1121,12 +1373,26 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 config requirements read 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async configRequirementsRead() {
     return await readAppServerConfigRequirements({
       requirements: this.configRequirements
     });
   }
 
+  /**
+   * 处理 experimental feature list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async experimentalFeatureList(params = {}) {
     if (params.threadId ?? params.thread_id) {
       const threadId = params.threadId ?? params.thread_id;
@@ -1149,10 +1415,26 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 experimental feature enablement set 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async experimentalFeatureEnablementSet(params = {}) {
     return setExperimentalFeatureEnablement(params, this.experimentalFeatureEnablementStore);
   }
 
+  /**
+   * 处理 command exec 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async commandExec(params = {}) {
     const command = params.command ?? params.cmd ?? params.argv;
     const events = [];
@@ -1264,6 +1546,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 command exec write 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async commandExecWrite(params = {}) {
     const result = this.commandSessionManager.write({
       session_id: requireAnyParam(params, ["sessionId", "session_id", "processId", "process_id"]),
@@ -1295,6 +1585,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 command exec terminate 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async commandExecTerminate(params = {}) {
     if (typeof this.commandSessionManager.terminate !== "function") {
       throw createAppServerProtocolError(
@@ -1320,6 +1618,14 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 command exec resize 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async commandExecResize(params = {}) {
     if (typeof this.commandSessionManager.resize !== "function") {
       throw createAppServerProtocolError(
@@ -1349,62 +1655,222 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 fs read file 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsReadFile(params = {}) {
     return await this.filesystemRuntime.readFile(params);
   }
 
+  /**
+   * 处理 fs write file 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsWriteFile(params = {}) {
     return await this.filesystemRuntime.writeFile(params);
   }
 
+  /**
+   * 处理 fs create directory 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsCreateDirectory(params = {}) {
     return await this.filesystemRuntime.createDirectory(params);
   }
 
+  /**
+   * 处理 fs get metadata 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsGetMetadata(params = {}) {
     return await this.filesystemRuntime.getMetadata(params);
   }
 
+  /**
+   * 处理 fs read directory 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsReadDirectory(params = {}) {
     return await this.filesystemRuntime.readDirectory(params);
   }
 
+  /**
+   * 处理 fs remove 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsRemove(params = {}) {
     return await this.filesystemRuntime.remove(params);
   }
 
+  /**
+   * 处理 fs copy 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsCopy(params = {}) {
     return await this.filesystemRuntime.copy(params);
   }
 
+  /**
+   * 处理 fs watch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsWatch(params = {}) {
     return await this.filesystemRuntime.watch(params);
   }
 
+  /**
+   * 处理 fs unwatch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async fsUnwatch(params = {}) {
     return await this.filesystemRuntime.unwatch(params);
   }
 
+  /**
+   * 处理 process spawn 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async processSpawn(params = {}) {
     this.assertExperimentalApi(APP_SERVER_METHODS.PROCESS_SPAWN);
+
+    if (this.approvalGate) {
+      const normalized = normalizeProcessSpawnParams(params);
+      const command = normalized.command.join(" ");
+      const capability = createProcessSpawnCapabilityRequest({
+        commandText: command,
+        argv: normalized.command,
+        cwd: normalized.cwd,
+        env: normalized.env,
+        processHandle: normalized.processHandle
+      });
+      const approval = this.approvalGate.check(capabilityRequestToApprovalRequest(capability));
+
+      if (approval.decision !== APPROVAL_DECISIONS.ALLOW) {
+        const serverRequest = approval.decision === APPROVAL_DECISIONS.PROMPT
+          ? this.serverRequests.create(createCommandExecutionApprovalServerRequest({
+              approval,
+              command,
+              cwd: normalized.cwd,
+              reason: approval.approvalRequest?.description ?? `Spawn process: ${command}`
+            }))
+          : null;
+
+        throw createAppServerProtocolError(
+          APP_SERVER_ERROR_CODES.INVALID_PARAMS,
+          approval.decision === APPROVAL_DECISIONS.PROMPT
+            ? "approval required before spawning process"
+            : "process spawn forbidden by approval policy",
+          {
+            reason: approval.decision === APPROVAL_DECISIONS.PROMPT
+              ? "approval_required"
+              : "approval_forbidden",
+            method: APP_SERVER_METHODS.PROCESS_SPAWN,
+            processHandle: normalized.processHandle,
+            command,
+            approval,
+            capability,
+            requestId: serverRequest?.requestId ?? null,
+            serverRequest: serverRequest ? {
+              requestId: serverRequest.requestId,
+              method: serverRequest.method,
+              params: serverRequest.params
+            } : null
+          }
+        );
+      }
+    }
+
     return await this.processRuntime.spawn(params);
   }
 
+  /**
+   * 处理 process write stdin 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async processWriteStdin(params = {}) {
     this.assertExperimentalApi(APP_SERVER_METHODS.PROCESS_WRITE_STDIN);
     return await this.processRuntime.writeStdin(params);
   }
 
+  /**
+   * 处理 process resize pty 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async processResizePty(params = {}) {
     this.assertExperimentalApi(APP_SERVER_METHODS.PROCESS_RESIZE_PTY);
     return await this.processRuntime.resizePty(params);
   }
 
+  /**
+   * 处理 process kill 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async processKill(params = {}) {
     this.assertExperimentalApi(APP_SERVER_METHODS.PROCESS_KILL);
     return await this.processRuntime.kill(params);
   }
 
+  /**
+   * 处理 mcp resource read 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async mcpResourceRead(params = {}) {
     return await this.mcpRuntime.readResource({
       server: requireParam(params, "server"),
@@ -1412,6 +1878,14 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 处理 mcp tool call 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async mcpToolCall(params = {}) {
     const result = await this.mcpRuntime.callTool({
       call_id: params.callId ?? params.call_id ?? randomUUID(),
@@ -1426,12 +1900,28 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 server request list 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async serverRequestList(params = {}) {
     return this.serverRequests.list({
       threadId: params.threadId ?? null
     });
   }
 
+  /**
+   * 处理 server request resolve 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} params - params 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async serverRequestResolve(params = {}) {
     const requestId = requireAnyParam(params, ["requestId", "request_id"]);
     const response = params.response ?? {
@@ -1460,6 +1950,12 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 处理 handle server response 相关逻辑。
+   *
+   * @param {unknown} message - message 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   handleServerResponse(message = {}) {
     const response = message.error
       ? {
@@ -1484,6 +1980,13 @@ export class CodexAppServer {
     return null;
   }
 
+  /**
+   * 解析 resolve server request 相关数据。
+   *
+   * @param {unknown} requestId - requestId 参数。
+   * @param {unknown} response - response 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   resolveServerRequest(requestId, response = {}) {
     const result = this.serverRequests.resolve(requestId, response);
 
@@ -1526,6 +2029,12 @@ export class CodexAppServer {
     return result;
   }
 
+  /**
+   * 发送 emit 相关数据。
+   *
+   * @param {unknown} notification - notification 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   emit(notification) {
     this.notifications.push(notification);
 
@@ -1534,6 +2043,12 @@ export class CodexAppServer {
     }
   }
 
+  /**
+   * 发送 emit server request 相关数据。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   emitServerRequest(request) {
     this.serverRequestMessages.push(request.envelope);
 
@@ -1542,6 +2057,13 @@ export class CodexAppServer {
     }
   }
 
+  /**
+   * 获取 get thread status 相关数据。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   getThreadStatus(threadId, options = {}) {
     if (!options.loaded) {
       return createThreadStatus(THREAD_STATUS_TYPES.NOT_LOADED);
@@ -1550,6 +2072,14 @@ export class CodexAppServer {
     return this.threadStatuses.get(threadId) ?? createThreadStatus(THREAD_STATUS_TYPES.IDLE);
   }
 
+  /**
+   * 设置 set thread status 相关数据。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} status - status 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   setThreadStatus(threadId, status, options = {}) {
     const normalized = normalizeThreadStatus(status);
     this.threadStatuses.set(threadId, normalized);
@@ -1567,10 +2097,24 @@ export class CodexAppServer {
     });
   }
 
+  /**
+   * 设置 set active turn 相关数据。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} record - record 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   setActiveTurn(threadId, record) {
     this.activeTurns.set(threadId, record);
   }
 
+  /**
+   * 处理 clear active turn 相关逻辑。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   clearActiveTurn(threadId, options = {}) {
     const active = this.activeTurns.get(threadId);
 
@@ -1583,6 +2127,12 @@ export class CodexAppServer {
     return active ?? null;
   }
 
+  /**
+   * 处理 check command session start 相关逻辑。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   checkCommandSessionStart(request = {}) {
     const normalized = normalizeExecCommandRequest(request);
 
@@ -1655,6 +2205,12 @@ export class CodexAppServer {
     };
   }
 
+  /**
+   * 断言 assert experimental api 相关数据。
+   *
+   * @param {unknown} method - method 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   assertExperimentalApi(method) {
     if (!this.experimentalApi) {
       throw createAppServerProtocolError(
@@ -1669,10 +2225,23 @@ export class CodexAppServer {
   }
 }
 
+/**
+ * 创建 create codex app server 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCodexAppServer(options = {}) {
   return new CodexAppServer(options);
 }
 
+/**
+ * 处理 require param 相关逻辑。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function requireParam(params, name) {
   const value = params?.[name];
 
@@ -1686,6 +2255,13 @@ function requireParam(params, name) {
   return value;
 }
 
+/**
+ * 处理 require any param 相关逻辑。
+ *
+ * @param {unknown} params - params 参数。
+ * @param {unknown} names - names 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function requireAnyParam(params, names) {
   for (const name of names) {
     const value = params?.[name];
@@ -1701,6 +2277,12 @@ function requireAnyParam(params, names) {
   );
 }
 
+/**
+ * 解码 decode base64 param 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function decodeBase64Param(value) {
   if (value == null || value === "") {
     return null;
@@ -1709,6 +2291,12 @@ function decodeBase64Param(value) {
   return Buffer.from(String(value), "base64").toString("utf8");
 }
 
+/**
+ * 判断是否为 is rpc response 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isRpcResponse(message) {
   return Boolean(
     message &&
@@ -1719,6 +2307,12 @@ function isRpcResponse(message) {
   );
 }
 
+/**
+ * 创建 create command exec output delta params 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createCommandExecOutputDeltaParams(options = {}) {
   const result = options.result ?? {};
   const output = String(result.output ?? "");

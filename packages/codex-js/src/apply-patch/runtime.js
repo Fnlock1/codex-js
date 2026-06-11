@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/apply-patch/runtime.js
+ *
+ * 解析、规划和执行 apply_patch 文件补丁。
+ */
 import { parseApplyPatch } from "./parser.js";
 import {
   ApplyPatchApplicationError,
@@ -8,6 +13,12 @@ import {
   createNodeApplyPatchFileProvider
 } from "./fs-runtime.js";
 
+/**
+ * 处理 summarize apply patch 相关逻辑。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function summarizeApplyPatch(parsed) {
   return {
     ...parsed.summary,
@@ -16,6 +27,12 @@ export function summarizeApplyPatch(parsed) {
   };
 }
 
+/**
+ * 创建 create apply patch dry run result 相关数据。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchDryRunResult(parsed) {
   const summary = summarizeApplyPatch(parsed);
 
@@ -37,6 +54,12 @@ export function createApplyPatchDryRunResult(parsed) {
   };
 }
 
+/**
+ * 创建 create apply patch parse failure 相关数据。
+ *
+ * @param {unknown} error - error 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchParseFailure(error) {
   return {
     status: "failed",
@@ -54,6 +77,12 @@ export function createApplyPatchParseFailure(error) {
   };
 }
 
+/**
+ * 创建 create apply patch dry run from text 相关数据。
+ *
+ * @param {unknown} patchText - patchText 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchDryRunFromText(patchText) {
   try {
     return createApplyPatchDryRunResult(parseApplyPatch(patchText));
@@ -62,6 +91,15 @@ export function createApplyPatchDryRunFromText(patchText) {
   }
 }
 
+/**
+ * 创建 create apply patch plan from text 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} patchText - patchText 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function createApplyPatchPlanFromText(patchText, options = {}) {
   try {
     const parsed = parseApplyPatch(patchText);
@@ -77,6 +115,13 @@ export async function createApplyPatchPlanFromText(patchText, options = {}) {
   }
 }
 
+/**
+ * 创建 create apply patch plan result 相关数据。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} plan - plan 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchPlanResult(parsed, plan) {
   const summary = summarizeApplyPatch(parsed);
 
@@ -102,6 +147,12 @@ export function createApplyPatchPlanResult(parsed, plan) {
   };
 }
 
+/**
+ * 创建 create apply patch application failure 相关数据。
+ *
+ * @param {unknown} error - error 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchApplicationFailure(error) {
   return {
     status: "failed",
@@ -120,6 +171,15 @@ export function createApplyPatchApplicationFailure(error) {
   };
 }
 
+/**
+ * 创建 create apply patch apply from text 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} patchText - patchText 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function createApplyPatchApplyFromText(patchText, options = {}) {
   try {
     const parsed = parseApplyPatch(patchText);
@@ -152,6 +212,14 @@ export async function createApplyPatchApplyFromText(patchText, options = {}) {
   }
 }
 
+/**
+ * 创建 create apply patch write result 相关数据。
+ *
+ * @param {unknown} parsed - parsed 参数。
+ * @param {unknown} plan - plan 参数。
+ * @param {unknown} fsResult - fsResult 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchWriteResult(parsed, plan, fsResult) {
   const summary = summarizeApplyPatch(parsed);
 
@@ -174,6 +242,12 @@ export function createApplyPatchWriteResult(parsed, plan, fsResult) {
   };
 }
 
+/**
+ * 创建 create apply patch write failure 相关数据。
+ *
+ * @param {unknown} fsResult - fsResult 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchWriteFailure(fsResult) {
   return {
     status: "failed",

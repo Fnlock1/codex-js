@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/tools/upstream.js
+ *
+ * 工具定义、路由、handler、内置工具和上游工具格式转换。
+ */
 import {
   CONTENT_ITEM_TYPES,
   createResponseCustomToolCallOutputItem,
@@ -26,6 +31,12 @@ export const TOOL_OUTPUT_PREVIEW_LIMITS = Object.freeze({
   TRUNCATION_NOTICE: "[... telemetry preview truncated ...]"
 });
 
+/**
+ * 创建 create upstream tool definition 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createUpstreamToolDefinition(options = {}) {
   return {
     name: String(options.name ?? ""),
@@ -36,6 +47,13 @@ export function createUpstreamToolDefinition(options = {}) {
   };
 }
 
+/**
+ * 处理 rename upstream tool definition 相关逻辑。
+ *
+ * @param {unknown} definition - definition 参数。
+ * @param {unknown} name - name 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function renameUpstreamToolDefinition(definition, name) {
   return {
     ...createUpstreamToolDefinition(definition),
@@ -43,6 +61,12 @@ export function renameUpstreamToolDefinition(definition, name) {
   };
 }
 
+/**
+ * 处理 defer upstream tool definition 相关逻辑。
+ *
+ * @param {unknown} definition - definition 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function deferUpstreamToolDefinition(definition) {
   return {
     ...createUpstreamToolDefinition(definition),
@@ -51,6 +75,12 @@ export function deferUpstreamToolDefinition(definition) {
   };
 }
 
+/**
+ * 创建 create upstream tool spec 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createUpstreamToolSpec(options = {}) {
   const type = options.type ?? UPSTREAM_TOOL_SPEC_TYPES.FUNCTION;
 
@@ -106,6 +136,12 @@ export function createUpstreamToolSpec(options = {}) {
   }
 }
 
+/**
+ * 归一化 normalize upstream tool spec 相关数据。
+ *
+ * @param {unknown} spec - spec 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeUpstreamToolSpec(spec = {}) {
   if (!spec || typeof spec !== "object") {
     throw new TypeError("Tool spec must be an object.");
@@ -114,6 +150,12 @@ export function normalizeUpstreamToolSpec(spec = {}) {
   return createUpstreamToolSpec(spec);
 }
 
+/**
+ * 处理 upstream tool spec name 相关逻辑。
+ *
+ * @param {unknown} spec - spec 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function upstreamToolSpecName(spec = {}) {
   const normalized = normalizeUpstreamToolSpec(spec);
 
@@ -129,10 +171,22 @@ export function upstreamToolSpecName(spec = {}) {
   }
 }
 
+/**
+ * 创建 create tools json for responses api 相关数据。
+ *
+ * @param {unknown} tools - tools 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolsJsonForResponsesApi(tools = []) {
   return tools.map(normalizeUpstreamToolSpec);
 }
 
+/**
+ * 处理 tool definition to upstream tool spec 相关逻辑。
+ *
+ * @param {unknown} definition - definition 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolDefinitionToUpstreamToolSpec(definition) {
   const normalized = createUpstreamToolDefinition(definition);
 
@@ -144,6 +198,12 @@ export function toolDefinitionToUpstreamToolSpec(definition) {
   });
 }
 
+/**
+ * 创建 create function tool payload 相关数据。
+ *
+ * @param {unknown} argumentsValue - argumentsValue 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createFunctionToolPayload(argumentsValue = {}) {
   return {
     type: UPSTREAM_TOOL_PAYLOAD_TYPES.FUNCTION,
@@ -153,6 +213,12 @@ export function createFunctionToolPayload(argumentsValue = {}) {
   };
 }
 
+/**
+ * 创建 create tool search payload 相关数据。
+ *
+ * @param {unknown} argumentsValue - argumentsValue 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolSearchPayload(argumentsValue = {}) {
   return {
     type: UPSTREAM_TOOL_PAYLOAD_TYPES.TOOL_SEARCH,
@@ -163,6 +229,12 @@ export function createToolSearchPayload(argumentsValue = {}) {
   };
 }
 
+/**
+ * 创建 create custom tool payload 相关数据。
+ *
+ * @param {unknown} input - input 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCustomToolPayload(input = "") {
   return {
     type: UPSTREAM_TOOL_PAYLOAD_TYPES.CUSTOM,
@@ -170,6 +242,12 @@ export function createCustomToolPayload(input = "") {
   };
 }
 
+/**
+ * 归一化 normalize tool payload 相关数据。
+ *
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeToolPayload(payload = {}) {
   if (typeof payload === "string") {
     return createCustomToolPayload(payload);
@@ -191,6 +269,12 @@ export function normalizeToolPayload(payload = {}) {
   }
 }
 
+/**
+ * 处理 tool payload log payload 相关逻辑。
+ *
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolPayloadLogPayload(payload = {}) {
   const normalized = normalizeToolPayload(payload);
 
@@ -205,6 +289,13 @@ export function toolPayloadLogPayload(payload = {}) {
   }
 }
 
+/**
+ * 创建 create json tool output 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createJsonToolOutput(value, options = {}) {
   return {
     kind: "json",
@@ -213,6 +304,13 @@ export function createJsonToolOutput(value, options = {}) {
   };
 }
 
+/**
+ * 创建 create text tool output 相关数据。
+ *
+ * @param {unknown} text - text 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTextToolOutput(text, options = {}) {
   return {
     kind: "text",
@@ -221,6 +319,12 @@ export function createTextToolOutput(text, options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize tool output 相关数据。
+ *
+ * @param {unknown} output - output 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeToolOutput(output = {}) {
   if (typeof output === "string") {
     return createTextToolOutput(output);
@@ -248,6 +352,13 @@ export function normalizeToolOutput(output = {}) {
   });
 }
 
+/**
+ * 处理 tool output log preview 相关逻辑。
+ *
+ * @param {unknown} output - output 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputLogPreview(output = {}, options = {}) {
   const normalized = normalizeToolOutput(output);
   const text = normalized.kind === "json"
@@ -257,10 +368,24 @@ export function toolOutputLogPreview(output = {}, options = {}) {
   return telemetryPreview(text, options);
 }
 
+/**
+ * 处理 tool output success for logging 相关逻辑。
+ *
+ * @param {unknown} output - output 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputSuccessForLogging(output = {}) {
   return Boolean(normalizeToolOutput(output).success ?? true);
 }
 
+/**
+ * 处理 tool output to response item 相关逻辑。
+ *
+ * @param {unknown} output - output 参数。
+ * @param {unknown} callId - callId 参数。
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputToResponseItem(output, callId, payload = {}) {
   const normalizedOutput = normalizeToolOutput(output);
   const normalizedPayload = normalizeToolPayload(payload);
@@ -283,10 +408,24 @@ export function toolOutputToResponseItem(output, callId, payload = {}) {
   });
 }
 
+/**
+ * 处理 tool output post tool use id 相关逻辑。
+ *
+ * @param {unknown} _output - _output 参数。
+ * @param {unknown} callId - callId 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputPostToolUseId(_output, callId) {
   return String(callId ?? "");
 }
 
+/**
+ * 处理 tool output post tool use input 相关逻辑。
+ *
+ * @param {unknown} _output - _output 参数。
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputPostToolUseInput(_output, payload = {}) {
   const normalized = normalizeToolPayload(payload);
 
@@ -301,6 +440,12 @@ export function toolOutputPostToolUseInput(_output, payload = {}) {
   }
 }
 
+/**
+ * 处理 tool output post tool use response 相关逻辑。
+ *
+ * @param {unknown} output - output 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputPostToolUseResponse(output = {}) {
   const normalized = normalizeToolOutput(output);
 
@@ -311,6 +456,13 @@ export function toolOutputPostToolUseResponse(output = {}) {
   return null;
 }
 
+/**
+ * 处理 tool output code mode result 相关逻辑。
+ *
+ * @param {unknown} output - output 参数。
+ * @param {unknown} payload - payload 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function toolOutputCodeModeResult(output, payload = {}) {
   const responseItem = toolOutputToResponseItem(output, "", payload);
 
@@ -330,6 +482,12 @@ export function toolOutputCodeModeResult(output, payload = {}) {
   return responseItemToCodeModeResult(responseItem);
 }
 
+/**
+ * 处理 response item to code mode result 相关逻辑。
+ *
+ * @param {unknown} responseItem - responseItem 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function responseItemToCodeModeResult(responseItem = {}) {
   if (responseItem.type === "message") {
     return contentItemsToCodeModeResult(responseItem.content);
@@ -350,6 +508,13 @@ export function responseItemToCodeModeResult(responseItem = {}) {
   return "";
 }
 
+/**
+ * 处理 telemetry preview 相关逻辑。
+ *
+ * @param {unknown} content - content 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function telemetryPreview(content, options = {}) {
   const maxBytes = options.maxBytes ?? TOOL_OUTPUT_PREVIEW_LIMITS.MAX_BYTES;
   const maxLines = options.maxLines ?? TOOL_OUTPUT_PREVIEW_LIMITS.MAX_LINES;
@@ -368,6 +533,12 @@ export function telemetryPreview(content, options = {}) {
   return `${preview}${preview.endsWith("\n") || !preview ? "" : "\n"}${notice}`;
 }
 
+/**
+ * 处理 content items to code mode result 相关逻辑。
+ *
+ * @param {unknown} items - items 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function contentItemsToCodeModeResult(items = []) {
   return asArray(items)
     .filter((item) => [
@@ -379,6 +550,12 @@ function contentItemsToCodeModeResult(items = []) {
     .join("\n");
 }
 
+/**
+ * 归一化 normalize json schema 相关数据。
+ *
+ * @param {unknown} schema - schema 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeJsonSchema(schema) {
   if (schema && typeof schema === "object" && !Array.isArray(schema)) {
     return { ...schema };
@@ -391,6 +568,12 @@ function normalizeJsonSchema(schema) {
   };
 }
 
+/**
+ * 归一化 normalize optional boolean 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeOptionalBoolean(value) {
   if (value == null) {
     return null;
@@ -399,6 +582,13 @@ function normalizeOptionalBoolean(value) {
   return Boolean(value);
 }
 
+/**
+ * 处理 take utf8 bytes at char boundary 相关逻辑。
+ *
+ * @param {unknown} text - text 参数。
+ * @param {unknown} maxBytes - maxBytes 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function takeUtf8BytesAtCharBoundary(text, maxBytes) {
   if (Buffer.byteLength(text, "utf8") <= maxBytes) {
     return text;
@@ -421,6 +611,12 @@ function takeUtf8BytesAtCharBoundary(text, maxBytes) {
   return result;
 }
 
+/**
+ * 处理 as array 相关逻辑。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function asArray(value) {
   if (value == null) {
     return [];
@@ -429,6 +625,12 @@ function asArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+/**
+ * 处理 omit nullish 相关逻辑。
+ *
+ * @param {unknown} object - object 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function omitNullish(object) {
   return Object.fromEntries(
     Object.entries(object).filter(([, value]) => value != null)

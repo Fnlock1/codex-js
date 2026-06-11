@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/session/history.js
+ *
+ * 会话历史、上下文回放、压缩和回滚辅助逻辑。
+ */
 import {
   EVENT_TYPES,
   ITEM_TYPES,
@@ -25,6 +30,12 @@ export const HISTORY_ENTRY_TYPES = Object.freeze({
   COMPACT_SUMMARY: "compact_summary"
 });
 
+/**
+ * 创建 create session record 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSessionRecord(options = {}) {
   const now = new Date().toISOString();
 
@@ -43,6 +54,13 @@ export function createSessionRecord(options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize session record 相关数据。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeSessionRecord(session = {}, options = {}) {
   const base = createSessionRecord({
     ...session,
@@ -65,6 +83,12 @@ export function normalizeSessionRecord(session = {}, options = {}) {
   return base;
 }
 
+/**
+ * 创建 create turn record 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTurnRecord(options = {}) {
   const events = Array.isArray(options.events) ? options.events : [];
   const items = itemsFromEvents(events);
@@ -89,6 +113,14 @@ export function createTurnRecord(options = {}) {
   };
 }
 
+/**
+ * 追加 append turn to session 相关数据。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} turn - turn 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function appendTurnToSession(session, turn, options = {}) {
   const normalized = normalizeSessionRecord(session, options);
   const turnRecord = createTurnRecord({
@@ -126,6 +158,13 @@ export function appendTurnToSession(session, turn, options = {}) {
   });
 }
 
+/**
+ * 处理 rollback session turns 相关逻辑。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function rollbackSessionTurns(session, options = {}) {
   const normalized = normalizeSessionRecord(session);
   const dropLastTurns = Math.max(1, Math.floor(Number(options.dropLastTurns ?? 1)));
@@ -157,6 +196,14 @@ export function rollbackSessionTurns(session, options = {}) {
   });
 }
 
+/**
+ * 处理 inject response items to session 相关逻辑。
+ *
+ * @param {unknown} session - session 参数。
+ * @param {unknown} items - items 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function injectResponseItemsToSession(session, items = [], options = {}) {
   const normalized = normalizeSessionRecord(session, options);
   const responseItems = normalizeResponseItems(items);
@@ -210,6 +257,12 @@ export function injectResponseItemsToSession(session, items = [], options = {}) 
   });
 }
 
+/**
+ * 处理 history entries from turn 相关逻辑。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function historyEntriesFromTurn(options = {}) {
   const entries = [];
   const input = normalizeUserInput(options.input ?? "");
@@ -251,6 +304,13 @@ export function historyEntriesFromTurn(options = {}) {
   return entries;
 }
 
+/**
+ * 处理 history entry from item 相关逻辑。
+ *
+ * @param {unknown} item - item 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function historyEntryFromItem(item, options = {}) {
   const text = getItemText(item);
   const base = {
@@ -315,6 +375,12 @@ export function historyEntryFromItem(item, options = {}) {
   return null;
 }
 
+/**
+ * 处理 response input items from history 相关逻辑。
+ *
+ * @param {unknown} history - history 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function responseInputItemsFromHistory(history = []) {
   const items = [];
 
@@ -350,6 +416,12 @@ export function responseInputItemsFromHistory(history = []) {
   return items;
 }
 
+/**
+ * 处理 items from events 相关逻辑。
+ *
+ * @param {unknown} events - events 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function itemsFromEvents(events = []) {
   const items = [];
 
@@ -362,6 +434,13 @@ export function itemsFromEvents(events = []) {
   return items;
 }
 
+/**
+ * 处理 rollout entries from events 相关逻辑。
+ *
+ * @param {unknown} events - events 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function rolloutEntriesFromEvents(events = [], options = {}) {
   return events.map((event, index) => ({
     turnIndex: options.turnIndex ?? null,
@@ -372,6 +451,13 @@ export function rolloutEntriesFromEvents(events = [], options = {}) {
   }));
 }
 
+/**
+ * 处理 compact history if needed 相关逻辑。
+ *
+ * @param {unknown} history - history 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function compactHistoryIfNeeded(history = [], options = {}) {
   const maxEntries = options.maxEntries ?? null;
 
@@ -401,6 +487,12 @@ export function compactHistoryIfNeeded(history = [], options = {}) {
   };
 }
 
+/**
+ * 创建 create compact summary entry 相关数据。
+ *
+ * @param {unknown} hiddenHistory - hiddenHistory 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCompactSummaryEntry(hiddenHistory = []) {
   const turns = new Set(hiddenHistory
     .map((entry) => entry.turnIndex)
@@ -419,6 +511,13 @@ export function createCompactSummaryEntry(hiddenHistory = []) {
   };
 }
 
+/**
+ * 处理 upsert item 相关逻辑。
+ *
+ * @param {unknown} items - items 参数。
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function upsertItem(items, item) {
   const index = items.findIndex((candidate) => candidate.id === item.id);
 
@@ -430,10 +529,22 @@ function upsertItem(items, item) {
   items[index] = item;
 }
 
+/**
+ * 处理 first event time 相关逻辑。
+ *
+ * @param {unknown} events - events 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function firstEventTime(events) {
   return events.find((event) => event.timestamp)?.timestamp ?? null;
 }
 
+/**
+ * 处理 infer injected item role 相关逻辑。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function inferInjectedItemRole(item) {
   if (item.role) {
     return item.role;

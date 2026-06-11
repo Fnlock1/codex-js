@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/history.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {

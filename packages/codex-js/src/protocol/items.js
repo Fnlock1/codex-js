@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/protocol/items.js
+ *
+ * thread、turn、item、user input、permission 等公共协议对象。
+ */
 import { randomUUID } from "node:crypto";
 
 export const ITEM_TYPES = Object.freeze({
@@ -21,6 +26,13 @@ export const MESSAGE_ROLES = Object.freeze({
   TOOL: "tool"
 });
 
+/**
+ * 创建 create user message item 相关数据。
+ *
+ * @param {unknown} text - text 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createUserMessageItem(text, options = {}) {
   return createMessageItem({
     id: options.id,
@@ -30,6 +42,13 @@ export function createUserMessageItem(text, options = {}) {
   });
 }
 
+/**
+ * 创建 create assistant message item 相关数据。
+ *
+ * @param {unknown} text - text 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createAssistantMessageItem(text, options = {}) {
   return createMessageItem({
     id: options.id,
@@ -39,6 +58,12 @@ export function createAssistantMessageItem(text, options = {}) {
   });
 }
 
+/**
+ * 创建 create message item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createMessageItem({ id = randomUUID(), role, status, text }) {
   return {
     id,
@@ -54,6 +79,12 @@ export function createMessageItem({ id = randomUUID(), role, status, text }) {
   };
 }
 
+/**
+ * 创建 create command execution item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createCommandExecutionItem({
   id = randomUUID(),
   command,
@@ -76,6 +107,12 @@ export function createCommandExecutionItem({
   };
 }
 
+/**
+ * 创建 create reasoning item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createReasoningItem({
   id = randomUUID(),
   summaryText,
@@ -93,6 +130,12 @@ export function createReasoningItem({
   };
 }
 
+/**
+ * 创建 create tool call item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolCallItem({
   id = randomUUID(),
   callId,
@@ -115,6 +158,12 @@ export function createToolCallItem({
   };
 }
 
+/**
+ * 创建 create tool result item 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolResultItem({
   id = randomUUID(),
   callId,
@@ -138,6 +187,12 @@ export function createToolResultItem({
   };
 }
 
+/**
+ * 获取 get item text 相关数据。
+ *
+ * @param {unknown} item - item 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function getItemText(item) {
   if (item?.type === ITEM_TYPES.COMMAND_EXECUTION) {
     return item.aggregated_output ?? "";
@@ -160,6 +215,12 @@ export function getItemText(item) {
     .join("");
 }
 
+/**
+ * 归一化 normalize string array 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeStringArray(value) {
   if (value == null) {
     return [];
@@ -168,6 +229,12 @@ function normalizeStringArray(value) {
   return (Array.isArray(value) ? value : [value]).map((entry) => String(entry));
 }
 
+/**
+ * 判断是否为 is thread item 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function isThreadItem(value) {
   return Boolean(
     value &&

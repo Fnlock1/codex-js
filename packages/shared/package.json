@@ -2,6 +2,7 @@
   "name": "@qoder-open/shared",
   "version": "0.1.0",
   "private": true,
+  "description": "Qoder Open 桌面编辑器使用的共享可序列化协议类型。",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

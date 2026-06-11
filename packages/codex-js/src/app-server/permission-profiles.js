@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/permission-profiles.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import {
   APPROVAL_POLICIES,
   PERMISSION_PROFILES,
@@ -10,6 +15,12 @@ export const BUILTIN_PERMISSION_PROFILE_IDS = Object.freeze({
   DANGER_FULL_ACCESS: "danger-full-access"
 });
 
+/**
+ * 列出 list permission profiles 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function listPermissionProfiles(options = {}) {
   const all = createBuiltinPermissionProfileSummaries();
   const limit = clampLimit(options.limit ?? 50);
@@ -23,6 +34,10 @@ export function listPermissionProfiles(options = {}) {
   };
 }
 
+/**
+ * 创建 create builtin permission profile summaries 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createBuiltinPermissionProfileSummaries() {
   return [
     createPermissionProfileSummary({
@@ -43,6 +58,12 @@ export function createBuiltinPermissionProfileSummaries() {
   ];
 }
 
+/**
+ * 创建 create permission profile summary 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createPermissionProfileSummary(options = {}) {
   const profile = options.profile ?? {};
 
@@ -55,6 +76,12 @@ export function createPermissionProfileSummary(options = {}) {
   };
 }
 
+/**
+ * 处理 clamp limit 相关逻辑。
+ *
+ * @param {unknown} limit - limit 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function clampLimit(limit) {
   const number = Number(limit);
 
@@ -65,12 +92,24 @@ function clampLimit(limit) {
   return Math.min(Math.floor(number), 200);
 }
 
+/**
+ * 编码 encode cursor 相关数据。
+ *
+ * @param {unknown} offset - offset 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function encodeCursor(offset) {
   return Buffer.from(JSON.stringify({
     offset
   })).toString("base64url");
 }
 
+/**
+ * 解码 decode cursor 相关数据。
+ *
+ * @param {unknown} cursor - cursor 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function decodeCursor(cursor) {
   if (!cursor) {
     return 0;

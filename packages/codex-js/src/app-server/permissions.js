@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/permissions.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 
@@ -6,6 +11,12 @@ export const PERMISSION_GRANT_SCOPES = Object.freeze({
   SESSION: "session"
 });
 
+/**
+ * 归一化 normalize request permission profile 相关数据。
+ *
+ * @param {unknown} profile - profile 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeRequestPermissionProfile(profile = {}) {
   return {
     network: normalizeNetworkPermissions(profile.network ?? null),
@@ -15,6 +26,12 @@ export function normalizeRequestPermissionProfile(profile = {}) {
   };
 }
 
+/**
+ * 归一化 normalize granted permission profile 相关数据。
+ *
+ * @param {unknown} profile - profile 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeGrantedPermissionProfile(profile = {}) {
   const normalized = normalizeRequestPermissionProfile(profile);
   const granted = {};
@@ -30,6 +47,12 @@ export function normalizeGrantedPermissionProfile(profile = {}) {
   return granted;
 }
 
+/**
+ * 归一化 normalize permission grant scope 相关数据。
+ *
+ * @param {unknown} scope - scope 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizePermissionGrantScope(scope) {
   const value = String(scope ?? PERMISSION_GRANT_SCOPES.TURN);
 
@@ -38,6 +61,12 @@ export function normalizePermissionGrantScope(scope) {
     : PERMISSION_GRANT_SCOPES.TURN;
 }
 
+/**
+ * 创建 create permissions approval params 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createPermissionsApprovalParams(options = {}) {
   const cwd = normalizePermissionPath(options.cwd ?? process.cwd());
 
@@ -53,6 +82,12 @@ export function createPermissionsApprovalParams(options = {}) {
   };
 }
 
+/**
+ * 创建 create permission grant 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createPermissionGrant(options = {}) {
   const requested = normalizeRequestPermissionProfile(options.requested ?? {});
   const granted = intersectPermissionProfiles(
@@ -81,12 +116,26 @@ export function createPermissionGrant(options = {}) {
   };
 }
 
+/**
+ * 定义 PermissionGrantStore 类，封装当前模块的状态和行为。
+ */
 export class PermissionGrantStore {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.grants = [];
     this.idFactory = options.idFactory ?? randomUUID;
   }
 
+  /**
+   * 处理 add 相关逻辑。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   add(options = {}) {
     const grant = createPermissionGrant({
       ...options,
@@ -100,6 +149,12 @@ export class PermissionGrantStore {
     return grant;
   }
 
+  /**
+   * 列出 list 相关数据。
+   *
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   list(options = {}) {
     const threadId = options.threadId == null ? null : String(options.threadId);
     const turnId = options.turnId == null ? null : String(options.turnId);
@@ -122,6 +177,13 @@ export class PermissionGrantStore {
     });
   }
 
+  /**
+   * 处理 clear turn 相关逻辑。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} turnId - turnId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   clearTurn(threadId, turnId) {
     const before = this.grants.length;
     this.grants = this.grants.filter((grant) => !(
@@ -134,6 +196,12 @@ export class PermissionGrantStore {
   }
 }
 
+/**
+ * 创建 create permissions response from client result 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createPermissionsResponseFromClientResult(options = {}) {
   const requested = normalizeRequestPermissionProfile(options.requested ?? {});
   const response = options.response ?? {};
@@ -163,6 +231,14 @@ export function createPermissionsResponseFromClientResult(options = {}) {
   };
 }
 
+/**
+ * 处理 intersect permission profiles 相关逻辑。
+ *
+ * @param {unknown} requested - requested 参数。
+ * @param {unknown} granted - granted 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function intersectPermissionProfiles(requested = {}, granted = {}, options = {}) {
   const normalizedRequested = normalizeRequestPermissionProfile(requested);
   const normalizedGranted = normalizeGrantedPermissionProfile(granted);
@@ -190,11 +266,23 @@ export function intersectPermissionProfiles(requested = {}, granted = {}, option
   return result;
 }
 
+/**
+ * 处理 permission profile is empty 相关逻辑。
+ *
+ * @param {unknown} profile - profile 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function permissionProfileIsEmpty(profile = {}) {
   const normalized = normalizeGrantedPermissionProfile(profile);
   return !normalized.network && !normalized.fileSystem;
 }
 
+/**
+ * 归一化 normalize network permissions 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeNetworkPermissions(value) {
   if (!value || typeof value !== "object") {
     return null;
@@ -209,6 +297,12 @@ function normalizeNetworkPermissions(value) {
   };
 }
 
+/**
+ * 归一化 normalize file system permissions 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeFileSystemPermissions(value) {
   if (!value || typeof value !== "object") {
     return null;
@@ -242,6 +336,12 @@ function normalizeFileSystemPermissions(value) {
   return Object.keys(result).length > 0 ? result : null;
 }
 
+/**
+ * 归一化 normalize file system entries 相关数据。
+ *
+ * @param {unknown} entries - entries 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeFileSystemEntries(entries) {
   if (!Array.isArray(entries)) {
     return [];
@@ -256,6 +356,12 @@ function normalizeFileSystemEntries(entries) {
     .filter((entry) => entry.path != null);
 }
 
+/**
+ * 归一化 normalize file system entry path 相关数据。
+ *
+ * @param {unknown} path - path 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeFileSystemEntryPath(path) {
   if (typeof path === "string") {
     return normalizePermissionPath(path);
@@ -271,6 +377,12 @@ function normalizeFileSystemEntryPath(path) {
   return null;
 }
 
+/**
+ * 归一化 normalize path list 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizePathList(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -281,6 +393,14 @@ function normalizePathList(value) {
     .map((entry) => normalizePermissionPath(entry)))];
 }
 
+/**
+ * 处理 intersect file system permissions 相关逻辑。
+ *
+ * @param {unknown} requested - requested 参数。
+ * @param {unknown} granted - granted 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function intersectFileSystemPermissions(requested, granted, options = {}) {
   if (!requested || !granted) {
     return null;
@@ -310,6 +430,14 @@ function intersectFileSystemPermissions(requested, granted, options = {}) {
   return Object.keys(result).length > 0 ? result : null;
 }
 
+/**
+ * 处理 intersect path lists 相关逻辑。
+ *
+ * @param {unknown} requested - requested 参数。
+ * @param {unknown} granted - granted 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function intersectPathLists(requested = [], granted = [], options = {}) {
   const requestedSet = new Set((requested ?? []).map((entry) => normalizeComparablePath(entry, options)));
 
@@ -317,6 +445,14 @@ function intersectPathLists(requested = [], granted = [], options = {}) {
     .filter((entry) => requestedSet.has(normalizeComparablePath(entry, options)));
 }
 
+/**
+ * 处理 intersect entries 相关逻辑。
+ *
+ * @param {unknown} requested - requested 参数。
+ * @param {unknown} granted - granted 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function intersectEntries(requested = [], granted = [], options = {}) {
   const requestedSet = new Set((requested ?? []).map((entry) => JSON.stringify({
     path: normalizeComparableEntryPath(entry.path, options),
@@ -330,6 +466,13 @@ function intersectEntries(requested = [], granted = [], options = {}) {
     })));
 }
 
+/**
+ * 归一化 normalize comparable entry path 相关数据。
+ *
+ * @param {unknown} path - path 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeComparableEntryPath(path, options = {}) {
   if (typeof path === "string") {
     return normalizeComparablePath(path, options);
@@ -345,6 +488,13 @@ function normalizeComparableEntryPath(path, options = {}) {
   return path;
 }
 
+/**
+ * 归一化 normalize comparable path 相关数据。
+ *
+ * @param {unknown} path - path 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeComparablePath(path, options = {}) {
   const value = normalizePermissionPath(path);
   const cwd = options.cwd ? normalizePermissionPath(options.cwd) : null;
@@ -356,10 +506,22 @@ function normalizeComparablePath(path, options = {}) {
   return value;
 }
 
+/**
+ * 归一化 normalize permission path 相关数据。
+ *
+ * @param {unknown} path - path 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizePermissionPath(path) {
   return String(path ?? "").replace(/\\/g, "/");
 }
 
+/**
+ * 判断是否为 is absolute like path 相关数据。
+ *
+ * @param {unknown} path - path 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function isAbsoluteLikePath(path) {
   return /^[A-Za-z]:\//.test(path) || path.startsWith("/");
 }

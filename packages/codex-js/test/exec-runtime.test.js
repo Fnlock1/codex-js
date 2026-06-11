@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/exec-runtime.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -242,6 +247,14 @@ test("decodeAndClampOutput truncates large buffers", () => {
   assert.equal(decodeAndClampOutput([Buffer.from("abcdef")], 3), "abc");
 });
 
+/**
+ * 创建 create temp exec script 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} source - source 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function createTempExecScript(source) {
   const directory = await mkdtemp(path.join(tmpdir(), "codex-js-exec-"));
   const filePath = path.join(directory, "script.mjs");
@@ -250,6 +263,12 @@ async function createTempExecScript(source) {
 
   return {
     filePath,
+    /**
+     * 处理 cleanup 相关逻辑。
+     *
+     * 这是异步流程，调用方需要等待 Promise 完成。
+     * @returns {unknown} 返回处理后的结果。
+     */
     async cleanup() {
       await rm(directory, {
         recursive: true,

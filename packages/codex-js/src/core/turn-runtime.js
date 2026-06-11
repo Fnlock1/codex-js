@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/core/turn-runtime.js
+ *
+ * agent turn 上下文、模型调用抽象、工具循环和 ReAct trace。
+ */
 import { randomUUID } from "node:crypto";
 import {
   createAssistantMessageItem,
@@ -29,13 +34,32 @@ import {
 } from "./model-client.js";
 import { TurnContext } from "./turn-context.js";
 
+/**
+ * 定义 TurnRuntime 类，封装当前模块的状态和行为。
+ */
 export class TurnRuntime {
+  /**
+   * 执行一轮 agent turn 并按事件流产出进度。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} _context - _context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runTurn(_context) {
     throw new Error("TurnRuntime.runTurn() must be implemented by a subclass.");
   }
 }
 
+/**
+ * 定义 MockTurnRuntime 类，封装当前模块的状态和行为。
+ */
 export class MockTurnRuntime extends TurnRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.modelClient = options.modelClient ?? new MockModelClient({
@@ -44,6 +68,14 @@ export class MockTurnRuntime extends TurnRuntime {
     this.toolRuntime = options.toolRuntime ?? new NoopToolCallRuntime();
   }
 
+  /**
+   * 执行一轮 agent turn 并按事件流产出进度。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runTurn(context) {
     const turnContext = context instanceof TurnContext
       ? context
@@ -106,6 +138,15 @@ export class MockTurnRuntime extends TurnRuntime {
     }
   }
 
+  /**
+   * 执行模型请求的工具调用并产出工具事件。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} responseItem - responseItem 参数。
+   * @param {unknown} turnContext - turnContext 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runToolCall(responseItem, turnContext) {
     const request = createToolCallRequest({
       callId: responseItem.call_id ?? responseItem.callId ?? responseItem.id ?? randomUUID(),
@@ -154,12 +195,24 @@ export class MockTurnRuntime extends TurnRuntime {
 
 export { defaultMockResponse };
 
+/**
+ * 处理 reasoning summary text 相关逻辑。
+ *
+ * @param {unknown} summary - summary 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function reasoningSummaryText(summary) {
   return (Array.isArray(summary) ? summary : [])
     .map((entry) => entry?.text ?? "")
     .filter(Boolean);
 }
 
+/**
+ * 处理 reasoning raw content 相关逻辑。
+ *
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function reasoningRawContent(content) {
   return (Array.isArray(content) ? content : [])
     .map((entry) => entry?.text ?? "")

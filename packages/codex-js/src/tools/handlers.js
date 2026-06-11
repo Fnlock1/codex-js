@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/tools/handlers.js
+ *
+ * 工具定义、路由、handler、内置工具和上游工具格式转换。
+ */
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -26,23 +31,49 @@ import {
   AgentCoordinator
 } from "../agents/coordinator.js";
 import {
+  normalizeExpertProfile,
+  selectExpertProfile
+} from "../agents/expert-profiles.js";
+import {
+  formatExpertPlan,
+  planExperts
+} from "../agents/expert-planner.js";
+import {
   CommandSessionManager,
   commandSessionResultToText
 } from "../exec/session.js";
 import {
+  MemoryStore,
+  formatRecalledMemories
+} from "../memory/store.js";
+import {
   SANDBOX_DECISIONS
 } from "../sandbox/policy.js";
+import {
+  checkCapabilityApproval,
+  createApplyPatchCapabilityRequest,
+  createCapabilityDecision,
+  createExecCapabilityRequest,
+  createNetworkCapabilityRequest
+} from "../policy/capability.js";
 import {
   BUILTIN_TOOL_NAMES,
   TOOL_CALL_RESULT_STATUSES,
   commandFromToolArguments,
-  createApplyPatchApprovalGateRequest,
   createRequestPermissionsApprovalGateRequest,
   createToolCallResult,
   patchFromToolArguments
 } from "./runtime.js";
 
+/**
+ * 定义 ShellCommandToolHandler 类，封装当前模块的状态和行为。
+ */
 export class ShellCommandToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.execRunner = options.execRunner ?? new ExecRunner({
       workingDirectory: options.workingDirectory,
@@ -53,18 +84,33 @@ export class ShellCommandToolHandler {
     this.approvalGate = options.approvalGate ?? null;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const command = commandFromToolArguments(request.arguments);
     const approvalGate = this.approvalGate ?? context.approvalGate ?? null;
+    const capabilityRequest = createExecCapabilityRequest({
+      command,
+      cwd: request.arguments?.cwd ?? context.turnContext?.workingDirectory ?? null,
+      tool: request.name,
+      arguments: request.arguments,
+      env: request.arguments?.env
+    });
 
     if (this.realExecution && approvalGate) {
-      const approval = await approvalGate.check(createToolApprovalGateRequest(request.name, {
-        metadata: {
-          arguments: request.arguments,
-          command,
-          cwd: request.arguments?.cwd ?? context.turnContext?.workingDirectory ?? null
-        }
-      }));
+      const approval = await checkCapabilityApproval(capabilityRequest, approvalGate);
+      const capability = createCapabilityDecision({
+        decision: capabilityDecisionFromApproval(approval),
+        request: capabilityRequest,
+        approval
+      });
 
       if (approval.decision !== APPROVAL_DECISIONS.ALLOW) {
         return createToolCallResult({
@@ -75,6 +121,7 @@ export class ShellCommandToolHandler {
           error: `blocked: ${approval.decision}`,
           raw: {
             dry_run: true,
+            capability,
             approval
           }
         });
@@ -113,17 +160,37 @@ export class ShellCommandToolHandler {
       raw: {
         dry_run: result?.dry_run ?? true,
         real_execution: this.realExecution,
+        capability: createCapabilityDecision({
+          request: capabilityRequest,
+          decision: "allow"
+        }),
         exec: result
       }
     });
   }
 }
 
+/**
+ * 定义 ExecCommandToolHandler 类，封装当前模块的状态和行为。
+ */
 export class ExecCommandToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.commandSessionManager = options.commandSessionManager ?? new CommandSessionManager();
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     const result = this.commandSessionManager.start(request.arguments ?? {});
 
@@ -141,11 +208,27 @@ export class ExecCommandToolHandler {
   }
 }
 
+/**
+ * 定义 WriteStdinToolHandler 类，封装当前模块的状态和行为。
+ */
 export class WriteStdinToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.commandSessionManager = options.commandSessionManager ?? new CommandSessionManager();
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     const result = this.commandSessionManager.write(request.arguments ?? {});
 
@@ -163,7 +246,15 @@ export class WriteStdinToolHandler {
   }
 }
 
+/**
+ * 定义 ApplyPatchToolHandler 类，封装当前模块的状态和行为。
+ */
 export class ApplyPatchToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.allowApplyPatch = options.allowApplyPatch ?? false;
     this.allowApplyPatchWrites = options.allowApplyPatchWrites ?? false;
@@ -174,16 +265,32 @@ export class ApplyPatchToolHandler {
     this.workingDirectory = options.workingDirectory;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const patch = patchFromToolArguments(request.arguments);
     const approvalGate = this.approvalGate ?? context.approvalGate ?? null;
     const workingDirectory = this.workingDirectory ?? context.turnContext?.workingDirectory;
+    const capabilityRequest = createApplyPatchCapabilityRequest({
+      patch,
+      workingDirectory,
+      tool: request.name
+    });
 
     if (this.allowApplyPatchWrites && approvalGate) {
-      const approval = await approvalGate.check(createApplyPatchApprovalGateRequest({
-        patch,
-        workingDirectory
-      }));
+      const approval = await checkCapabilityApproval(capabilityRequest, approvalGate);
+      const capability = createCapabilityDecision({
+        decision: capabilityDecisionFromApproval(approval),
+        request: capabilityRequest,
+        approval
+      });
 
       if (approval.decision !== APPROVAL_DECISIONS.ALLOW) {
         return createToolCallResult({
@@ -194,6 +301,7 @@ export class ApplyPatchToolHandler {
           error: `blocked: ${approval.decision}`,
           raw: {
             dry_run: true,
+            capability,
             approval
           }
         });
@@ -225,12 +333,26 @@ export class ApplyPatchToolHandler {
         : TOOL_CALL_RESULT_STATUSES.FAILED,
       output: result.output,
       error: result.error ?? null,
-      raw: result.raw
+      raw: {
+        ...result.raw,
+        capability: createCapabilityDecision({
+          request: capabilityRequest,
+          decision: "allow"
+        })
+      }
     });
   }
 }
 
+/**
+ * 定义 RequestPermissionsToolHandler 类，封装当前模块的状态和行为。
+ */
 export class RequestPermissionsToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.serverRequestStore = options.serverRequestStore ?? null;
     this.permissionGrantStore = options.permissionGrantStore ?? null;
@@ -238,6 +360,15 @@ export class RequestPermissionsToolHandler {
     this.workingDirectory = options.workingDirectory;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const args = request.arguments && typeof request.arguments === "object"
       ? request.arguments
@@ -334,6 +465,13 @@ export class RequestPermissionsToolHandler {
   }
 }
 
+/**
+ * 应用 apply granted permissions to sandbox policy 相关数据。
+ *
+ * @param {unknown} sandboxPolicy - sandboxPolicy 参数。
+ * @param {unknown} permissions - permissions 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function applyGrantedPermissionsToSandboxPolicy(sandboxPolicy, permissions = {}) {
   if (!sandboxPolicy) {
     return {
@@ -385,6 +523,13 @@ export function applyGrantedPermissionsToSandboxPolicy(sandboxPolicy, permission
   };
 }
 
+/**
+ * 归一化 normalize sandbox grant path 相关数据。
+ *
+ * @param {unknown} root - root 参数。
+ * @param {unknown} workingDirectory - workingDirectory 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizeSandboxGrantPath(root, workingDirectory) {
   const value = String(root ?? "");
 
@@ -399,13 +544,30 @@ function normalizeSandboxGrantPath(root, workingDirectory) {
   );
 }
 
+/**
+ * 定义 ViewImageToolHandler 类，封装当前模块的状态和行为。
+ */
 export class ViewImageToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.sandboxPolicy = options.sandboxPolicy ?? null;
     this.workingDirectory = options.workingDirectory;
     this.maxBytes = options.maxBytes ?? 8 * 1024 * 1024;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const args = request.arguments && typeof request.arguments === "object"
       ? request.arguments
@@ -492,11 +654,28 @@ export class ViewImageToolHandler {
   }
 }
 
+/**
+ * 定义 ToolSearchToolHandler 类，封装当前模块的状态和行为。
+ */
 export class ToolSearchToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.getTools = options.getTools ?? null;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const args = request.arguments && typeof request.arguments === "object"
       ? request.arguments
@@ -548,11 +727,89 @@ export class ToolSearchToolHandler {
   }
 }
 
-export class SpawnAgentToolHandler {
+/**
+ * 定义 SpawnAgentToolHandler 类，封装当前模块的状态和行为。
+ */
+/**
+ * 专家调度工具处理器。
+ *
+ * 负责把复杂任务拆成专家执行计划，供主模型后续调用
+ * spawn_agent 和 wait_agent。它相当于多专家模式里的“调度 AI”。
+ */
+export class PlanExpertsToolHandler {
+  /**
+   * 创建专家调度工具。
+   *
+   * @param {object} options - 工具配置。
+   * @param {object[]} [options.expertProfiles] - 可用专家档案。
+   */
   constructor(options = {}) {
-    this.agentCoordinator = options.agentCoordinator ?? new AgentCoordinator();
+    this.expertProfiles = options.expertProfiles;
   }
 
+  /**
+   * 执行专家规划。
+   *
+   * @param {object} request - 工具调用请求。
+   * @returns {Promise<object>} 工具调用结果。
+   */
+  async run(request) {
+    const args = request.arguments && typeof request.arguments === "object"
+      ? request.arguments
+      : {};
+
+    try {
+      const plan = planExperts({
+        task: args.task,
+        experts: args.experts ?? args.expert_ids,
+        customExperts: args.customExperts ?? args.custom_experts,
+        limit: args.limit ?? args.max_experts ?? args.maxExperts,
+        profiles: this.expertProfiles
+      });
+
+      return createToolCallResult({
+        callId: request.call_id,
+        name: request.name,
+        output: JSON.stringify({
+          plan,
+          text: formatExpertPlan(plan)
+        }),
+        raw: {
+          plan
+        }
+      });
+    } catch (error) {
+      return createToolCallResult({
+        callId: request.call_id,
+        name: request.name,
+        status: TOOL_CALL_RESULT_STATUSES.FAILED,
+        output: error.message,
+        error: error.code ?? "expert_plan_error"
+      });
+    }
+  }
+}
+
+export class SpawnAgentToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
+  constructor(options = {}) {
+    this.agentCoordinator = options.agentCoordinator ?? new AgentCoordinator();
+    this.expertProfiles = options.expertProfiles;
+  }
+
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const args = request.arguments && typeof request.arguments === "object"
       ? request.arguments
@@ -569,14 +826,23 @@ export class SpawnAgentToolHandler {
       });
     }
 
+    const customExpert = normalizeExpertProfile(args.expertProfile ?? args.expert_profile);
+    const expert = customExpert ?? selectExpertProfile({
+      task,
+      expert: args.expert ?? args.expert_id ?? args.role,
+      auto: args.mode !== "manual",
+      profiles: this.expertProfiles
+    });
     const agent = await this.agentCoordinator.spawn({
       name: args.name,
-      role: args.role,
+      role: args.role ?? expert.role,
       task,
       parentAgentId: args.parent_agent_id ?? args.parentAgentId ?? null,
       threadId: context.turnContext?.threadId ?? context.threadId ?? null,
       metadata: {
         context: args.context ?? null,
+        expert,
+        expert_id: expert.id,
         created_by_tool_call: request.call_id
       },
       autostart: args.autostart ?? Boolean(this.agentCoordinator.runner)
@@ -588,7 +854,12 @@ export class SpawnAgentToolHandler {
       output: JSON.stringify({
         agent_id: agent.id,
         status: agent.status,
-        task: agent.task
+        task: agent.task,
+        expert: {
+          id: expert.id,
+          name: expert.name,
+          role: expert.role
+        }
       }),
       raw: {
         agent
@@ -597,11 +868,27 @@ export class SpawnAgentToolHandler {
   }
 }
 
+/**
+ * 定义 WaitAgentToolHandler 类，封装当前模块的状态和行为。
+ */
 export class WaitAgentToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.agentCoordinator = options.agentCoordinator ?? new AgentCoordinator();
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     const args = request.arguments && typeof request.arguments === "object"
       ? request.arguments
@@ -649,12 +936,29 @@ export class WaitAgentToolHandler {
   }
 }
 
+/**
+ * 定义 GoalToolHandler 类，封装当前模块的状态和行为。
+ */
 export class GoalToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.goalStore = options.goalStore ?? new InMemoryGoalStore();
     this.kind = options.kind ?? BUILTIN_TOOL_NAMES.GET_GOAL;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     const threadId = context.turnContext?.threadId ?? context.threadId ?? "standalone";
     const args = request.arguments && typeof request.arguments === "object"
@@ -743,12 +1047,161 @@ export class GoalToolHandler {
   }
 }
 
+/**
+ * 定义 HostedProviderToolHandler 类，封装当前模块的状态和行为。
+ */
+/**
+ * 长期记忆工具处理器。
+ *
+ * 统一承接 remember、recall_memory、forget_memory 和 list_memories，
+ * 让模型可以主动保存、查询和删除跨 turn 的上下文。
+ */
+export class MemoryToolHandler {
+  /**
+   * 创建记忆工具处理器。
+   *
+   * @param {object} options - 处理器依赖。
+   * @param {MemoryStore} [options.memoryStore] - 记忆存储实例。
+   * @param {string} [options.kind] - 当前工具名称。
+   */
+  constructor(options = {}) {
+    this.memoryStore = options.memoryStore ?? new MemoryStore(options);
+    this.kind = options.kind ?? BUILTIN_TOOL_NAMES.RECALL_MEMORY;
+  }
+
+  /**
+   * 执行记忆工具调用。
+   *
+   * @param {object} request - 工具调用请求。
+   * @param {object} context - turn 上下文。
+   * @returns {Promise<object>} 工具调用结果。
+   */
+  async run(request, context = {}) {
+    const args = request.arguments && typeof request.arguments === "object"
+      ? request.arguments
+      : {};
+    const turnContext = context.turnContext ?? {};
+    const threadId = turnContext.threadId ?? context.threadId ?? null;
+    const workingDirectory = turnContext.workingDirectory ?? context.workingDirectory ?? null;
+    const contextExpertId = turnContext.metadata?.memory?.expertId ?? context.expertId ?? null;
+    const expertId = args.expert_id ?? args.expertId ?? contextExpertId;
+
+    try {
+      if (this.kind === BUILTIN_TOOL_NAMES.REMEMBER) {
+        const memory = await this.memoryStore.remember({
+          text: args.text ?? args.memory ?? args.content,
+          scope: args.scope,
+          tags: args.tags,
+          expertId,
+          metadata: args.metadata,
+          threadId,
+          workingDirectory
+        });
+
+        return createToolCallResult({
+          callId: request.call_id,
+          name: request.name,
+          output: JSON.stringify({
+            memory
+          }),
+          raw: {
+            memory
+          }
+        });
+      }
+
+      if (this.kind === BUILTIN_TOOL_NAMES.FORGET_MEMORY) {
+        const forgotten = await this.memoryStore.forget({
+          id: args.id
+        });
+
+        return createToolCallResult({
+          callId: request.call_id,
+          name: request.name,
+          output: JSON.stringify({
+            forgotten: Boolean(forgotten),
+            memory: forgotten
+          }),
+          raw: {
+            memory: forgotten
+          }
+        });
+      }
+
+      if (this.kind === BUILTIN_TOOL_NAMES.LIST_MEMORIES) {
+        const memories = await this.memoryStore.list({
+          scope: args.scope,
+          limit: args.limit,
+          threadId,
+          workingDirectory,
+          expertId
+        });
+
+        return createToolCallResult({
+          callId: request.call_id,
+          name: request.name,
+          output: JSON.stringify({
+            memories
+          }),
+          raw: {
+            memories
+          }
+        });
+      }
+
+      const query = String(args.query ?? args.text ?? turnContext.inputText?.() ?? "");
+      const memories = await this.memoryStore.recall(query, {
+        scope: args.scope,
+        limit: args.limit,
+        threadId,
+        workingDirectory,
+        expertId
+      });
+
+      return createToolCallResult({
+        callId: request.call_id,
+        name: request.name,
+        output: JSON.stringify({
+          memories,
+          context: formatRecalledMemories(memories)
+        }),
+        raw: {
+          memories
+        }
+      });
+    } catch (error) {
+      return createToolCallResult({
+        callId: request.call_id,
+        name: request.name,
+        status: TOOL_CALL_RESULT_STATUSES.FAILED,
+        output: error.message,
+        error: error.code ?? "memory_error"
+      });
+    }
+  }
+}
+
 export class HostedProviderToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.provider = options.provider ?? null;
     this.kind = options.kind ?? "hosted";
+    this.approvalGate = options.approvalGate ?? null;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request, context = {}) {
     if (!this.provider) {
       return createToolCallResult({
@@ -766,6 +1219,16 @@ export class HostedProviderToolHandler {
       });
     }
 
+    const capabilityRequest = createNetworkCapabilityRequest({
+      subject: request.name,
+      tool: request.name,
+      kind: this.kind,
+      arguments: request.arguments ?? null,
+      metadata: {
+        providerUrl: this.provider?.url ?? null
+      }
+    });
+    const approvalGate = this.approvalGate ?? context.approvalGate ?? null;
     const sandboxPolicy = context.sandboxPolicy ?? null;
 
     if (sandboxPolicy) {
@@ -779,7 +1242,38 @@ export class HostedProviderToolHandler {
           output: `${request.name} sandbox blocked: ${decision.reason}`,
           error: "sandbox_denied",
           raw: {
-            sandbox: decision
+            sandbox: decision,
+            capability: createCapabilityDecision({
+              decision: "deny",
+              request: capabilityRequest,
+              sandbox: decision,
+              reason: decision.reason
+            })
+          }
+        });
+      }
+    }
+
+    if (approvalGate) {
+      const approval = await checkCapabilityApproval(capabilityRequest, approvalGate);
+
+      if (approval.decision !== APPROVAL_DECISIONS.ALLOW) {
+        return createToolCallResult({
+          callId: request.call_id,
+          name: request.name,
+          status: TOOL_CALL_RESULT_STATUSES.FAILED,
+          output: `${request.name} requires approval before contacting hosted provider.`,
+          error: approval.decision === APPROVAL_DECISIONS.PROMPT
+            ? "approval_required"
+            : "approval_forbidden",
+          raw: {
+            approval,
+            capability: createCapabilityDecision({
+              decision: capabilityDecisionFromApproval(approval),
+              request: capabilityRequest,
+              approval,
+              reason: `approval ${approval.decision}`
+            })
           }
         });
       }
@@ -806,7 +1300,10 @@ export class HostedProviderToolHandler {
           hosted: {
             kind: this.kind,
             payload
-          }
+          },
+          capability: createCapabilityDecision({
+            request: capabilityRequest
+          })
         }
       });
     } catch (error) {
@@ -815,18 +1312,40 @@ export class HostedProviderToolHandler {
         name: request.name,
         status: TOOL_CALL_RESULT_STATUSES.FAILED,
         output: error.message,
-        error: error.code ?? `${this.kind}_error`
+        error: error.code ?? `${this.kind}_error`,
+        raw: {
+          capability: createCapabilityDecision({
+            request: capabilityRequest,
+            reason: error.message
+          })
+        }
       });
     }
   }
 }
 
+/**
+ * 定义 PlaceholderToolHandler 类，封装当前模块的状态和行为。
+ */
 export class PlaceholderToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.error = options.error ?? "not_implemented";
     this.reason = options.reason ?? "safe_placeholder";
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     return createToolCallResult({
       callId: request.call_id,
@@ -842,12 +1361,28 @@ export class PlaceholderToolHandler {
   }
 }
 
+/**
+ * 定义 McpResourceToolHandler 类，封装当前模块的状态和行为。
+ */
 export class McpResourceToolHandler {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.mcpRuntime = options.mcpRuntime ?? null;
     this.kind = options.kind ?? "list_resources";
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(request) {
     if (!this.mcpRuntime) {
       return createToolCallResult({
@@ -893,6 +1428,14 @@ export class McpResourceToolHandler {
     }
   }
 
+  /**
+   * 处理 call runtime 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} args - args 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async callRuntime(args) {
     if (this.kind === "list_resource_templates") {
       return await this.mcpRuntime.listResourceTemplates(args);
@@ -906,6 +1449,13 @@ export class McpResourceToolHandler {
   }
 }
 
+/**
+ * 创建 create tool approval gate request 相关数据。
+ *
+ * @param {unknown} toolName - toolName 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createToolApprovalGateRequest(toolName, options = {}) {
   return {
     resourceType: APPROVAL_RESOURCE_TYPES.TOOL,
@@ -916,21 +1466,60 @@ export function createToolApprovalGateRequest(toolName, options = {}) {
   };
 }
 
+function capabilityDecisionFromApproval(approval) {
+  if (approval?.decision === APPROVAL_DECISIONS.ALLOW) {
+    return "allow";
+  }
+
+  if (approval?.decision === APPROVAL_DECISIONS.PROMPT) {
+    return "prompt";
+  }
+
+  return "deny";
+}
+
+/**
+ * 定义 InMemoryGoalStore 类，封装当前模块的状态和行为。
+ */
 export class InMemoryGoalStore {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     this.goals = new Map(Object.entries(options.goals ?? {}));
   }
 
+  /**
+   * 获取 get 相关数据。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   get(threadId) {
     return this.goals.get(String(threadId ?? "")) ?? null;
   }
 
+  /**
+   * 设置 set 相关数据。
+   *
+   * @param {unknown} threadId - threadId 参数。
+   * @param {unknown} goal - goal 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   set(threadId, goal) {
     this.goals.set(String(threadId ?? ""), goal);
     return goal;
   }
 }
 
+/**
+ * 处理 mime type for image path 相关逻辑。
+ *
+ * @param {unknown} filePath - filePath 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function mimeTypeForImagePath(filePath) {
   switch (path.extname(filePath).toLowerCase()) {
     case ".png":
@@ -951,6 +1540,13 @@ function mimeTypeForImagePath(filePath) {
   }
 }
 
+/**
+ * 归一化 normalize positive limit 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @param {unknown} fallback - fallback 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function normalizePositiveLimit(value, fallback) {
   const number = Number(value);
 
@@ -961,6 +1557,13 @@ function normalizePositiveLimit(value, fallback) {
   return Math.min(number, 50);
 }
 
+/**
+ * 处理 score tool search match 相关逻辑。
+ *
+ * @param {unknown} entry - entry 参数。
+ * @param {unknown} query - query 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function scoreToolSearchMatch(entry, query) {
   const spec = entry.spec ?? {};
   const metadata = entry.metadata ?? {};

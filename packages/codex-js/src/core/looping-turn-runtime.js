@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/core/looping-turn-runtime.js
+ *
+ * 核心模型/工具循环 runtime，持续执行 tool call 并把结果回灌给模型。
+ */
 import { randomUUID } from "node:crypto";
 import {
   ITEM_STATUSES,
@@ -43,7 +48,18 @@ import { TurnRuntime } from "./turn-runtime.js";
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
 
+/**
+ * 支持工具循环的核心 turn runtime。
+ *
+ * 它会反复调用模型：模型返回 tool_call 时执行工具并把结果加入
+ * responseInputItems；模型不再请求工具时，才完成 assistant 最终消息。
+ */
 export class LoopingTurnRuntime extends TurnRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.modelClient = options.modelClient ?? new MockModelClient({
@@ -53,6 +69,14 @@ export class LoopingTurnRuntime extends TurnRuntime {
     this.maxToolIterations = options.maxToolIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
   }
 
+  /**
+   * 执行一轮 agent turn 并按事件流产出进度。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} context - context 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runTurn(context) {
     const turnContext = context instanceof TurnContext
       ? context
@@ -65,7 +89,7 @@ export class LoopingTurnRuntime extends TurnRuntime {
       id: assistantId,
       status: ITEM_STATUSES.IN_PROGRESS
     });
-    const responseInputItems = [];
+    const responseInputItems = [...turnContext.responseInputItems];
     const reactTrace = createReactTrace();
 
     yield createThreadStartedEvent(turnContext.threadId);
@@ -144,6 +168,15 @@ export class LoopingTurnRuntime extends TurnRuntime {
     }
   }
 
+  /**
+   * 执行模型请求的工具调用并产出工具事件。
+   *
+   * 这是异步生成器，会按需产出事件或结果。
+   *
+   * @param {unknown} responseItem - responseItem 参数。
+   * @param {unknown} turnContext - turnContext 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async *runToolCall(responseItem, turnContext) {
     const request = createToolCallRequest({
       callId: responseItem.call_id ?? responseItem.callId ?? responseItem.id ?? randomUUID(),
@@ -195,6 +228,15 @@ export class LoopingTurnRuntime extends TurnRuntime {
 
 export { defaultMockResponse };
 
+/**
+ * 处理 collect model response 相关逻辑。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} modelSession - modelSession 参数。
+ * @param {unknown} modelPrompt - modelPrompt 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function collectModelResponse(modelSession, modelPrompt) {
   const response = [];
 
@@ -205,12 +247,24 @@ async function collectModelResponse(modelSession, modelPrompt) {
   return response;
 }
 
+/**
+ * 处理 reasoning summary text 相关逻辑。
+ *
+ * @param {unknown} summary - summary 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function reasoningSummaryText(summary) {
   return (Array.isArray(summary) ? summary : [])
     .map((entry) => entry?.text ?? "")
     .filter(Boolean);
 }
 
+/**
+ * 处理 reasoning raw content 相关逻辑。
+ *
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function reasoningRawContent(content) {
   return (Array.isArray(content) ? content : [])
     .map((entry) => entry?.text ?? "")

@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/app-server/thread-state.js
+ *
+ * 面向 UI 或守护进程的 JSONL/RPC app-server 协议层。
+ */
 export const THREAD_STATUS_TYPES = Object.freeze({
   NOT_LOADED: "notLoaded",
   IDLE: "idle",
@@ -17,6 +22,13 @@ export const TURN_CONTROL_STATUSES = Object.freeze({
   INTERRUPTED: "interrupted"
 });
 
+/**
+ * 创建 create thread status 相关数据。
+ *
+ * @param {unknown} type - type 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createThreadStatus(type, options = {}) {
   switch (type) {
     case THREAD_STATUS_TYPES.NOT_LOADED:
@@ -43,6 +55,14 @@ export function createThreadStatus(type, options = {}) {
   }
 }
 
+/**
+ * 创建 create loaded thread entry 相关数据。
+ *
+ * @param {unknown} thread - thread 参数。
+ * @param {unknown} session - session 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createLoadedThreadEntry(thread, session = null, options = {}) {
   return {
     threadId: thread.id,
@@ -55,6 +75,12 @@ export function createLoadedThreadEntry(thread, session = null, options = {}) {
   };
 }
 
+/**
+ * 归一化 normalize thread name 相关数据。
+ *
+ * @param {unknown} value - value 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function normalizeThreadName(value) {
   const name = String(value ?? "").trim();
 
@@ -65,6 +91,12 @@ export function normalizeThreadName(value) {
   return name.slice(0, 200);
 }
 
+/**
+ * 创建 create turn control record 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createTurnControlRecord(options = {}) {
   return {
     turnId: String(options.turnId ?? ""),
@@ -78,6 +110,12 @@ export function createTurnControlRecord(options = {}) {
   };
 }
 
+/**
+ * 创建 create steer message 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createSteerMessage(options = {}) {
   return {
     id: options.id,

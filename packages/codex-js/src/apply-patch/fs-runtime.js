@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：src/apply-patch/fs-runtime.js
+ *
+ * 解析、规划和执行 apply_patch 文件补丁。
+ */
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -6,7 +11,16 @@ export const APPLY_PATCH_WRITE_DECISIONS = Object.freeze({
   BLOCK: "block"
 });
 
+/**
+ * 定义 ApplyPatchWriteError 类，封装当前模块的状态和行为。
+ */
 export class ApplyPatchWriteError extends Error {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} message - message 参数。
+   * @param {unknown} options - options 参数。
+   */
   constructor(message, options = {}) {
     super(message);
     this.name = "ApplyPatchWriteError";
@@ -16,13 +30,36 @@ export class ApplyPatchWriteError extends Error {
   }
 }
 
+/**
+ * 定义 ApplyPatchFsRuntime 类，封装当前模块的状态和行为。
+ */
 export class ApplyPatchFsRuntime {
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _plan - _plan 参数。
+   * @param {unknown} _options - _options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(_plan, _options = {}) {
     throw new Error("ApplyPatchFsRuntime.run() must be implemented by a subclass.");
   }
 }
 
+/**
+ * 定义 BlockedApplyPatchFsRuntime 类，封装当前模块的状态和行为。
+ */
 export class BlockedApplyPatchFsRuntime extends ApplyPatchFsRuntime {
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} plan - plan 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(plan) {
     return createApplyPatchFsResult({
       plan,
@@ -33,12 +70,29 @@ export class BlockedApplyPatchFsRuntime extends ApplyPatchFsRuntime {
   }
 }
 
+/**
+ * 定义 RealApplyPatchFsRuntime 类，封装当前模块的状态和行为。
+ */
 export class RealApplyPatchFsRuntime extends ApplyPatchFsRuntime {
+  /**
+   * 初始化实例依赖和运行状态。
+   *
+   * @param {unknown} options - options 参数。
+   */
   constructor(options = {}) {
     super();
     this.allowWrites = options.allowWrites ?? false;
   }
 
+  /**
+   * 执行当前对象负责的核心流程。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} plan - plan 参数。
+   * @param {unknown} options - options 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   async run(plan, options = {}) {
     if (!(options.allowWrites ?? this.allowWrites)) {
       return new BlockedApplyPatchFsRuntime().run(plan);
@@ -67,6 +121,15 @@ export class RealApplyPatchFsRuntime extends ApplyPatchFsRuntime {
   }
 }
 
+/**
+ * 应用 apply apply patch plan 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} plan - plan 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export async function applyApplyPatchPlan(plan, options = {}) {
   if (!options.allowWrites) {
     throw createApplyPatchWriteError("apply_patch writes are not allowed", {
@@ -122,6 +185,10 @@ export async function applyApplyPatchPlan(plan, options = {}) {
   };
 }
 
+/**
+ * 创建 create node apply patch file provider 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createNodeApplyPatchFileProvider() {
   return async ({ absolutePath }) => {
     try {
@@ -154,6 +221,12 @@ export function createNodeApplyPatchFileProvider() {
   };
 }
 
+/**
+ * 创建 create apply patch fs result 相关数据。
+ *
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchFsResult(options = {}) {
   return {
     applied: options.applied ?? false,
@@ -166,6 +239,12 @@ export function createApplyPatchFsResult(options = {}) {
   };
 }
 
+/**
+ * 格式化 format apply patch success output 相关数据。
+ *
+ * @param {unknown} plan - plan 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function formatApplyPatchSuccessOutput(plan) {
   const lines = ["Success. Updated the following files:"];
 
@@ -184,10 +263,26 @@ export function formatApplyPatchSuccessOutput(plan) {
   return lines.join("\n");
 }
 
+/**
+ * 创建 create apply patch write error 相关数据。
+ *
+ * @param {unknown} message - message 参数。
+ * @param {unknown} options - options 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 export function createApplyPatchWriteError(message, options = {}) {
   return new ApplyPatchWriteError(message, options);
 }
 
+/**
+ * 写入 write text file creating parents 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} filePath - filePath 参数。
+ * @param {unknown} content - content 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function writeTextFileCreatingParents(filePath, content) {
   await mkdir(path.dirname(filePath), {
     recursive: true

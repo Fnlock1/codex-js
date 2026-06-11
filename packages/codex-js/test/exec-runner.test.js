@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/exec-runner.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -57,6 +62,14 @@ test("ExecRunner can use an injected runtime", async () => {
   const runner = new ExecRunner({
     workingDirectory: "/workspace",
     runtime: {
+      /**
+       * 执行当前对象负责的核心流程。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       *
+       * @param {unknown} request - request 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async run(request) {
         return createExecResult({
           output: createExecToolCallOutput({
@@ -188,6 +201,14 @@ test("ExecRunner blocks commands outside sandbox cwd", async () => {
   assert.equal(completed.item.aggregated_output, "sandbox blocked: read outside sandbox roots");
 });
 
+/**
+ * 创建 create temp exec script 相关数据。
+ *
+ * 这是异步流程，调用方需要等待 Promise 完成。
+ *
+ * @param {unknown} source - source 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 async function createTempExecScript(source) {
   const directory = await mkdtemp(path.join(tmpdir(), "codex-js-runner-"));
   const filePath = path.join(directory, "script.mjs");
@@ -196,6 +217,12 @@ async function createTempExecScript(source) {
 
   return {
     filePath,
+    /**
+     * 处理 cleanup 相关逻辑。
+     *
+     * 这是异步流程，调用方需要等待 Promise 完成。
+     * @returns {unknown} 返回处理后的结果。
+     */
     async cleanup() {
       await rm(directory, {
         recursive: true,

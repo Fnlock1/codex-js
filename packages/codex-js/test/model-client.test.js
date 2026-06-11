@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/model-client.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -200,6 +205,14 @@ export default function generate(prompt) {
 test("PluginModelClient accepts async iterable adapter responses", async () => {
   const client = new PluginModelClient({
     adapter: {
+      /**
+       * 处理 stream response 相关逻辑。
+       *
+       * 这是异步生成器，会按需产出事件或结果。
+       *
+       * @param {unknown} prompt - prompt 参数。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async *streamResponse(prompt) {
         yield "part ";
         yield {
@@ -337,6 +350,15 @@ test("DeepSeek tool schema compatibility maps oneOf to anyOf", () => {
 
 test("OpenAICompatibleModelClient posts chat completions with tools and headers", async () => {
   const requests = [];
+  /**
+   * 处理 fetch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} url - url 参数。
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   const fetch = async (url, request) => {
     requests.push({
       url,
@@ -346,6 +368,12 @@ test("OpenAICompatibleModelClient posts chat completions with tools and headers"
 
     return {
       ok: true,
+      /**
+       * 处理 json 相关逻辑。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async json() {
         return {
           choices: [
@@ -421,11 +449,26 @@ test("OpenAICompatibleModelClient posts chat completions with tools and headers"
 
 test("OpenAICompatibleModelClient sends tool output as tool messages on follow-up", async () => {
   const requests = [];
+  /**
+   * 处理 fetch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _url - _url 参数。
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   const fetch = async (_url, request) => {
     requests.push(JSON.parse(request.body));
 
     return {
       ok: true,
+      /**
+       * 处理 json 相关逻辑。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async json() {
         return {
           choices: [
@@ -503,6 +546,12 @@ test("OpenAICompatibleModelClient composes custom and default system prompts", a
 
       return {
         ok: true,
+        /**
+         * 处理 json 相关逻辑。
+         *
+         * 这是异步流程，调用方需要等待 Promise 完成。
+         * @returns {unknown} 返回处理后的结果。
+         */
         async json() {
           return {
             choices: [
@@ -535,13 +584,76 @@ test("OpenAICompatibleModelClient composes custom and default system prompts", a
   assert.match(requests[0].messages[0].content, /Current working directory: C:\\workspace/);
 });
 
+test("OpenAICompatibleModelClient does not replay old tool outputs in a fresh session", async () => {
+  const requests = [];
+  const client = new OpenAICompatibleModelClient({
+    baseUrl: "https://provider.example/v1",
+    model: "model-a",
+    fetch: async (_url, request) => {
+      requests.push(JSON.parse(request.body));
+
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: "ok"
+                }
+              }
+            ]
+          };
+        }
+      };
+    }
+  });
+  const session = client.createSession();
+
+  for await (const _item of session.streamResponse({
+    inputText: "second turn",
+    workingDirectory: "C:\\workspace",
+    tools: [],
+    responseInputItems: [
+      {
+        type: "function_call_output",
+        call_id: "old-call",
+        output: {
+          body: "old output"
+        }
+      }
+    ]
+  })) {
+    // consume
+  }
+
+  assert.equal(requests[0].messages.some((message) => message.role === "tool"), false);
+  assert.equal(requests[0].messages.at(-1).role, "user");
+});
+
 test("OpenAICompatibleModelClient falls back to pending assistant tool call ids", async () => {
   const requests = [];
+  /**
+   * 处理 fetch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _url - _url 参数。
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   const fetch = async (_url, request) => {
     requests.push(JSON.parse(request.body));
 
     return {
       ok: true,
+      /**
+       * 处理 json 相关逻辑。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async json() {
         return {
           choices: [
@@ -607,11 +719,26 @@ test("OpenAICompatibleModelClient falls back to pending assistant tool call ids"
 
 test("OpenAICompatibleModelClient sends only new tool outputs after multi-step tool loops", async () => {
   const requests = [];
+  /**
+   * 处理 fetch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _url - _url 参数。
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   const fetch = async (_url, request) => {
     requests.push(JSON.parse(request.body));
 
     return {
       ok: true,
+      /**
+       * 处理 json 相关逻辑。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async json() {
         return {
           choices: [
@@ -724,11 +851,26 @@ test("OpenAICompatibleModelClient sends only new tool outputs after multi-step t
 
 test("OpenAICompatibleModelClient omits unmatched empty tool output ids", async () => {
   const requests = [];
+  /**
+   * 处理 fetch 相关逻辑。
+   *
+   * 这是异步流程，调用方需要等待 Promise 完成。
+   *
+   * @param {unknown} _url - _url 参数。
+   * @param {unknown} request - request 参数。
+   * @returns {unknown} 返回处理后的结果。
+   */
   const fetch = async (_url, request) => {
     requests.push(JSON.parse(request.body));
 
     return {
       ok: true,
+      /**
+       * 处理 json 相关逻辑。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async json() {
         return {
           choices: [
@@ -774,6 +916,12 @@ test("OpenAICompatibleModelClient includes redacted provider error body", async 
       ok: false,
       status: 400,
       statusText: "Bad Request",
+      /**
+       * 处理 text 相关逻辑。
+       *
+       * 这是异步流程，调用方需要等待 Promise 完成。
+       * @returns {unknown} 返回处理后的结果。
+       */
       async text() {
         return `{"error":{"message":"bad key ${"sk-" + "testsecret"} and bad schema"}}`;
       }
@@ -851,6 +999,12 @@ test("ModelClientSession base class requires implementation", async () => {
   );
 });
 
+/**
+ * 列出 listen 相关数据。
+ *
+ * @param {unknown} server - server 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function listen(server) {
   return new Promise((resolve, reject) => {
     server.listen(0, "127.0.0.1", () => resolve());
@@ -858,6 +1012,12 @@ function listen(server) {
   });
 }
 
+/**
+ * 处理 close 相关逻辑。
+ *
+ * @param {unknown} server - server 参数。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function close(server) {
   return new Promise((resolve) => {
     server.close(() => resolve());

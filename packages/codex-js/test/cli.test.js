@@ -1,3 +1,8 @@
+/**
+ * 中文模块说明：test/cli.test.js
+ *
+ * Node 内置测试套件，覆盖 codex-js 的核心运行时和工具行为。
+ */
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -27,7 +32,8 @@ test("tools list prints registered tool capability summary", async () => {
 
   assert.equal(exitCode, 0);
   assert.match(output.text, /codex-js tools/);
-  assert.match(output.text, /registered: 21/);
+  assert.match(output.text, /registered: 26/);
+  assert.match(output.text, /plan_experts/);
   assert.match(output.text, /shell_command/);
   assert.match(output.text, /apply_patch/);
   assert.doesNotMatch(output.text, /web_search/);
@@ -49,7 +55,7 @@ test("tools inspect --json includes hosted tools when enabled", async () => {
 
   assert.equal(exitCode, 0);
   const report = JSON.parse(output.text);
-  assert.equal(report.summary.registeredTools, 23);
+  assert.equal(report.summary.registeredTools, 28);
   assert.equal(report.summary.hostedToolsEnabled, true);
   assert.ok(report.tools.some((tool) => tool.name === "web_search" && tool.configured));
   assert.ok(report.tools.some((tool) => tool.name === "image_generation" && !tool.configured));
@@ -150,6 +156,22 @@ test("CLI parses max tool iteration override", () => {
   assert.match(invalid.errors[0], /positive integer/);
 });
 
+test("CLI parses expert team mode explicitly", () => {
+  const parsed = parseArgs([
+    "chat",
+    "hello",
+    "--expert-team"
+  ]);
+  const alias = parseArgs([
+    "exec",
+    "hello",
+    "--experts"
+  ]);
+
+  assert.equal(parsed.expertTeam, true);
+  assert.equal(alias.expertTeam, true);
+});
+
 test("exec human output writes final answer to stderr", async () => {
   const stdout = createWritableCapture();
   const stderr = createWritableCapture();
@@ -166,6 +188,63 @@ test("exec human output writes final answer to stderr", async () => {
   assert.equal(exitCode, 0);
   assert.equal(stdout.text, "");
   assert.equal(stderr.text, "done\n");
+});
+
+test("exec keeps chat single-agent by default and injects leader prompt only for expert team", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "codex-js-cli-expert-team-"));
+
+  try {
+    const adapterPath = join(dir, "adapter.mjs");
+    const promptLogPath = join(dir, "prompts.jsonl");
+    await writeFile(adapterPath, `
+import { appendFile } from "node:fs/promises";
+
+export async function generate(prompt, context) {
+  await appendFile(${JSON.stringify(promptLogPath)}, JSON.stringify({
+    inputText: prompt.inputText,
+    systemPrompt: context.adapterOptions.systemPrompt ?? null,
+    tools: prompt.tools.map((tool) => tool.name)
+  }) + "\\n");
+  return "ok";
+}
+`, "utf8");
+
+    await runCli([
+      "exec",
+      "hello",
+      "--model-adapter",
+      adapterPath
+    ], {
+      stdout: createWritableCapture(),
+      stderr: createWritableCapture()
+    });
+    await runCli([
+      "exec",
+      "hello",
+      "--model-adapter",
+      adapterPath,
+      "--expert-team"
+    ], {
+      stdout: createWritableCapture(),
+      stderr: createWritableCapture()
+    });
+
+    const prompts = (await readFile(promptLogPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    assert.equal(prompts[0].tools.includes("plan_experts"), false);
+    assert.equal(prompts[0].systemPrompt, null);
+    assert.equal(prompts[1].tools.includes("plan_experts"), true);
+    assert.equal(prompts[1].tools.includes("spawn_agent"), true);
+    assert.match(prompts[1].systemPrompt, /技术 Leader/);
+  } finally {
+    await rm(dir, {
+      recursive: true,
+      force: true
+    });
+  }
 });
 
 test("exec can use a local model adapter module", async () => {
@@ -983,9 +1062,19 @@ test("thread CLI returns an error when thread id is missing", async () => {
   assert.match(stderr.text, /Missing thread id/);
 });
 
+/**
+ * 创建 create writable capture 相关数据。
+ * @returns {unknown} 返回处理后的结果。
+ */
 function createWritableCapture() {
   return {
     text: "",
+    /**
+     * 写入 write 相关数据。
+     *
+     * @param {unknown} chunk - chunk 参数。
+     * @returns {unknown} 返回处理后的结果。
+     */
     write(chunk) {
       this.text += String(chunk);
       return true;
