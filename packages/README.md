@@ -1,19 +1,26 @@
-# packages 目录说明
+# Qoder Open Packages
 
-这里存放 Qoder Open 工作区内的共享包，目前只保留桌面编辑器需要的公共类型包。
+This directory contains workspace packages used by Qoder Open.
 
-## 文件夹
+## Packages
 
-- `shared`: 共享 TypeScript 包，提供 Electron main、preload、Vue renderer 之间共用的可序列化编辑器协议类型。
+| Package | Purpose |
+| --- | --- |
+| `shared` | Serializable editor protocol types shared by Electron main, preload, and the Vue renderer. |
+| `codex-js` | Standalone experimental JavaScript runtime for Codex-style agent research and migration work. |
 
-## 生成目录和本地目录
+## Boundaries
 
-下面这些目录或文件可能会在安装依赖、构建后出现，但它们不是源码，不要手动修改：
+- `shared` is part of the Qoder Open desktop editor surface. Keep it lightweight, serializable, and editor-focused.
+- `codex-js` is not part of the desktop editor runtime. It must stay standalone unless the product direction is explicitly changed.
+- Do not import `codex-js` from `apps/desktop` or `packages/shared`.
+- Do not add model providers, MCP, agent loops, or approval runtimes to `shared`.
 
-- `shared/dist`: 由 `shared/src` 编译生成的构建产物。
-- `shared/node_modules`: 包管理器生成的依赖链接和命令入口。
-- `shared/tsconfig.tsbuildinfo`: TypeScript 增量构建缓存。
+## Generated Files
 
-## 当前规则
+Do not manually edit generated outputs such as:
 
-`packages` 应保持轻量、平台无关。除非产品方向明确改变，否则不要在这里重新加入 AI agent、model provider、MCP、tool-call loop、Quest/Assistant 相关代码。
+- `dist`
+- `out`
+- `node_modules`
+- `*.tsbuildinfo`

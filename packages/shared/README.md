@@ -1,25 +1,39 @@
 # @qoder-open/shared
 
-这个包定义桌面编辑器共用的、可序列化的 TypeScript 类型。
+Shared serializable editor protocol types for Qoder Open.
 
-它主要被这些模块引用：
+This package is used by:
 
-- Electron main 进程 IPC 处理逻辑。
-- Electron preload 暴露的 `window.qoder` API。
-- Vue renderer 的状态管理和 UI。
+- Electron main IPC handlers.
+- Electron preload APIs exposed through `window.qoder`.
+- Vue renderer state and UI code.
 
-## 文件夹
+## Contents
 
-- `src`: 包导出的源码类型。
-- `dist`: 编译生成的 JavaScript 和声明文件，不要手动修改。
-- `node_modules`: 包管理器生成的本地依赖链接和命令入口，不要手动修改。
+- `src/index.ts`: Workspace, file tree, Git, terminal, language-service, diagnostics, and project-index DTOs.
+- `dist`: Generated JavaScript and declaration output. Do not edit manually.
+- `tsconfig.json`: TypeScript build configuration.
 
-## 文件
+## Boundaries
 
-- `package.json`: 包元信息、构建/检查脚本，以及给消费者使用的导出映射。
-- `tsconfig.json`: TypeScript 构建配置，用来把 `src` 编译到 `dist`。
-- `src/index.ts`: 工作区、Git、终端、语言服务、诊断、项目索引等共享协议类型。
+This package should contain data shapes and lightweight platform-independent types only.
 
-## 边界
+Allowed:
 
-这里只放数据结构和少量平台无关的辅助类型。不要把 Electron API、Vue 状态、文件系统行为、LSP 进程管理，或者旧 agent/model/MCP 逻辑放进这个包。
+- Serializable DTOs.
+- String/number/boolean/null/array/object based protocol types.
+- Editor-facing workspace, Git, terminal, language-service, diagnostics, and project-index types.
+
+Not allowed:
+
+- Electron, Vue, Monaco, or Node runtime objects.
+- Filesystem, process, LSP, or IPC implementation logic.
+- AI, agent, model-provider, MCP, approval, or tool-call runtime types.
+- Imports from `packages/codex-js`.
+
+## Validation
+
+```bash
+pnpm --filter @qoder-open/shared check
+pnpm --filter @qoder-open/shared build
+```
