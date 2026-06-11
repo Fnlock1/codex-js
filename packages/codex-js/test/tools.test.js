@@ -530,6 +530,40 @@ test("ShellCommandToolHandler marks non-zero command exits as failed tool result
   assert.equal(result.output, "ParserError");
 });
 
+test("ShellCommandToolHandler compresses long command output while retaining raw exec output", async () => {
+  const originalOutput = Array.from({ length: 260 }, (_, index) => `line-${index + 1}`).join("\n");
+  const handler = new ShellCommandToolHandler({
+    realExecution: true,
+    execRunner: {
+      async *runCommand() {
+        return {
+          output: {
+            exit_code: 0,
+            aggregated_output: {
+              text: originalOutput
+            }
+          },
+          error: null,
+          dry_run: false
+        };
+      }
+    }
+  });
+  const result = await handler.run(createToolCallRequest({
+    callId: "shell-long",
+    name: "shell_command",
+    arguments: {
+      command: "long-output"
+    }
+  }));
+
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
+  assert.equal(result.raw.outputSummary.compressed, true);
+  assert.equal(result.raw.outputSummary.reason, "lines");
+  assert.match(result.output, /\[\.\.\. tool output compressed \.\.\.\]/u);
+  assert.equal(result.raw.exec.output.aggregated_output.text, originalOutput);
+});
+
 test("ShellCommandToolHandler records capability decisions for blocked real commands", async () => {
   const handler = new ShellCommandToolHandler({
     realExecution: true,
@@ -855,6 +889,32 @@ test("hosted provider handler delegates only when a provider is configured", asy
   assert.equal(configured.raw.capability.request.metadata.kind, "web_search");
 });
 
+test("hosted provider handler compresses long provider payloads", async () => {
+  const payload = {
+    results: Array.from({ length: 320 }, (_, index) => ({
+      title: `result-${index + 1}`,
+      url: `https://example.test/${index + 1}`
+    }))
+  };
+  const result = await new HostedProviderToolHandler({
+    kind: "web_search",
+    provider() {
+      return payload;
+    }
+  }).run(createToolCallRequest({
+    callId: "hosted-long",
+    name: "web_search",
+    arguments: {
+      query: "codex"
+    }
+  }));
+
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
+  assert.equal(result.raw.outputSummary.compressed, true);
+  assert.match(result.output, /\[\.\.\. tool output compressed \.\.\.\]/u);
+  assert.equal(result.raw.hosted.payload, payload);
+});
+
 test("hosted provider handler records capability approval blocks", async () => {
   let called = false;
   const result = await new HostedProviderToolHandler({
@@ -1073,6 +1133,34 @@ test("git tools route status and diff through exec runner", async () => {
     "git status --short --branch",
     "git diff --staged -- \"src/app.js\""
   ]);
+});
+
+test("git tools compress long diff output while preserving exec result", async () => {
+  const originalOutput = Array.from({ length: 260 }, (_, index) => `+ changed-${index + 1}`).join("\n");
+  const execRunner = {
+    async *runCommand() {
+      return {
+        output: {
+          aggregated_output: {
+            text: originalOutput
+          }
+        },
+        error: null
+      };
+    }
+  };
+  const result = await new GitDiffToolHandler({
+    execRunner
+  }).run(createToolCallRequest({
+    callId: "diff-long",
+    name: "git_diff"
+  }));
+
+  assert.equal(result.status, TOOL_CALL_RESULT_STATUSES.COMPLETED);
+  assert.equal(result.raw.outputSummary.compressed, true);
+  assert.equal(result.raw.outputSummary.reason, "lines");
+  assert.match(result.output, /\[\.\.\. tool output compressed \.\.\.\]/u);
+  assert.equal(result.raw.git.output.aggregated_output.text, originalOutput);
 });
 
 test("git tools record capability decisions when approval blocks execution", async () => {

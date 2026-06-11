@@ -88,9 +88,14 @@ export function planExperts(options = {}) {
     task,
     index
   }));
+  const taskAnalysis = createTaskAnalysis(complexity, assignments);
 
   return {
     task,
+    taskAnalysis,
+    contextPolicy: createContextPolicy(task, assignments, complexity),
+    executionHints: createExecutionHints(assignments, complexity),
+    outputPolicy: createOutputPolicy(complexity),
     strategy: createPlanStrategy(task, assignments),
     assignments,
     summaryPrompt: createSummaryPrompt(task, assignments),
@@ -138,6 +143,70 @@ export function formatExpertPlan(plan = {}) {
     "",
     `Summary: ${plan.summaryPrompt ?? ""}`
   ].join("\n");
+}
+
+export function analyzeExpertPlanningTask(task = {}) {
+  const complexity = analyzeTaskComplexity(task);
+
+  return createTaskAnalysis(complexity, []);
+}
+
+function createTaskAnalysis(complexity, assignments = []) {
+  return {
+    level: complexity.level,
+    wantsImplementation: complexity.wantsImplementation,
+    requiresSplit: complexity.requiresSplit,
+    signals: {
+      frontend: complexity.frontendSignals,
+      backend: complexity.backendSignals,
+      complexity: complexity.complexitySignals
+    },
+    recommendedExpertCount: assignments.length,
+    selectedExpertIds: assignments.map((assignment) => assignment.expert.id)
+  };
+}
+
+function createContextPolicy(task, assignments, complexity) {
+  const text = String(task ?? "");
+
+  return {
+    strategy: complexity.level === "complex" ? "scoped_parallel" : "focused_single_pass",
+    includeSharedTask: true,
+    isolateExpertMemory: true,
+    preserveLatestUserInstruction: true,
+    expectedInputs: [
+      "latest_user_task",
+      complexity.requiresSplit ? "workspace_boundaries" : null,
+      text.length > 120 ? "task_summary" : null
+    ].filter(Boolean),
+    perExpertScopes: assignments.map((assignment) => ({
+      assignmentId: assignment.id,
+      expertId: assignment.expert.id,
+      includeFullTask: true,
+      includeOtherExpertPrivateMemory: false
+    }))
+  };
+}
+
+function createExecutionHints(assignments, complexity) {
+  const canRunInParallel = assignments.length > 1;
+
+  return {
+    mode: canRunInParallel ? "parallel" : "single",
+    waitForAll: canRunInParallel,
+    coordinatorShouldMerge: canRunInParallel,
+    verifyAfterMerge: complexity.wantsImplementation,
+    maxParallelExperts: assignments.length
+  };
+}
+
+function createOutputPolicy(complexity) {
+  return {
+    compressToolOutputs: true,
+    preferFindingsFirst: true,
+    includeValidation: complexity.wantsImplementation,
+    summaryDetail: complexity.level === "complex" ? "structured" : "concise"
+  };
 }
 
 /**

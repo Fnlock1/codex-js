@@ -64,6 +64,9 @@ import {
   createToolCallResult,
   patchFromToolArguments
 } from "./runtime.js";
+import {
+  compressToolOutput
+} from "./output-compression.js";
 
 /**
  * 定义 ShellCommandToolHandler 类，封装当前模块的状态和行为。
@@ -150,16 +153,19 @@ export class ShellCommandToolHandler {
     const result = next.value ?? null;
     const exitCode = result?.output?.exit_code;
     const failed = Boolean(result?.error) || (exitCode != null && exitCode !== 0);
+    const output = result?.output?.aggregated_output?.text ?? `dry-run: ${command}`;
+    const compressedOutput = compressToolOutput(output);
 
     return createToolCallResult({
       callId: request.call_id,
       name: request.name,
       status: failed ? TOOL_CALL_RESULT_STATUSES.FAILED : TOOL_CALL_RESULT_STATUSES.COMPLETED,
-      output: result?.output?.aggregated_output?.text ?? `dry-run: ${command}`,
+      output: compressedOutput.text,
       error: result?.error ?? (failed ? `exit_code:${exitCode}` : null),
       raw: {
         dry_run: result?.dry_run ?? true,
         real_execution: this.realExecution,
+        outputSummary: compressedOutput.summary,
         capability: createCapabilityDecision({
           request: capabilityRequest,
           decision: "allow"
@@ -1292,15 +1298,19 @@ export class HostedProviderToolHandler {
             kind: this.kind
           });
 
+      const output = typeof payload === "string" ? payload : JSON.stringify(payload ?? {});
+      const compressedOutput = compressToolOutput(output);
+
       return createToolCallResult({
         callId: request.call_id,
         name: request.name,
-        output: typeof payload === "string" ? payload : JSON.stringify(payload ?? {}),
+        output: compressedOutput.text,
         raw: {
           hosted: {
             kind: this.kind,
             payload
           },
+          outputSummary: compressedOutput.summary,
           capability: createCapabilityDecision({
             request: capabilityRequest
           })

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  analyzeExpertPlanningTask,
   formatExpertPlan,
   planExperts
 } from "../src/index.js";
@@ -17,6 +18,11 @@ test("expert planner prefers fullstack for simple implementation tasks", () => {
   assert.equal(expertIds.includes("backend"), false);
   assert.equal(plan.spawnSequence.length, plan.assignments.length);
   assert.equal(plan.waitSequence.length, plan.assignments.length);
+  assert.equal(plan.taskAnalysis.level, "simple");
+  assert.deepEqual(plan.taskAnalysis.selectedExpertIds, expertIds);
+  assert.equal(plan.contextPolicy.strategy, "focused_single_pass");
+  assert.equal(plan.executionHints.verifyAfterMerge, true);
+  assert.equal(plan.outputPolicy.compressToolOutputs, true);
   assert.match(plan.summaryPrompt, /最终只输出中文摘要/);
 });
 
@@ -32,6 +38,21 @@ test("expert planner splits frontend and backend for complex full-stack tasks", 
   assert.equal(expertIds.includes("architect"), true);
   assert.equal(expertIds.includes("tester"), true);
   assert.equal(expertIds.includes("fullstack"), false);
+  assert.equal(plan.taskAnalysis.requiresSplit, true);
+  assert.equal(plan.contextPolicy.strategy, "scoped_parallel");
+  assert.equal(plan.executionHints.mode, "parallel");
+  assert.equal(plan.outputPolicy.summaryDetail, "structured");
+});
+
+test("expert planner exposes reusable task analysis metadata", () => {
+  const analysis = analyzeExpertPlanningTask("Implement a Vue UI with Node API and database auth");
+
+  assert.equal(analysis.level, "complex");
+  assert.equal(analysis.wantsImplementation, true);
+  assert.equal(analysis.requiresSplit, true);
+  assert.equal(analysis.signals.frontend, true);
+  assert.equal(analysis.signals.backend, true);
+  assert.deepEqual(analysis.selectedExpertIds, []);
 });
 
 test("expert planner honors explicit experts before auto selection", () => {

@@ -352,6 +352,7 @@ export {
 } from "./agents/expert-profiles.js";
 export {
   DEFAULT_EXPERT_PLAN_LIMIT,
+  analyzeExpertPlanningTask,
   formatExpertPlan,
   planExperts
 } from "./agents/expert-planner.js";
@@ -407,6 +408,11 @@ export {
   GitDiffToolHandler,
   GitStatusToolHandler
 } from "./tools/git-tools.js";
+export {
+  TOOL_OUTPUT_COMPRESSION_DEFAULTS,
+  compressToolOutput,
+  createOutputSummary
+} from "./tools/output-compression.js";
 export {
   McpClient,
   NotConnectedMcpClient,

@@ -16,6 +16,9 @@ import {
   TOOL_CALL_RESULT_STATUSES,
   createToolCallResult
 } from "./runtime.js";
+import {
+  compressToolOutput
+} from "./output-compression.js";
 
 /**
  * 定义 GitStatusToolHandler 类，封装当前模块的状态和行为。
@@ -149,14 +152,17 @@ async function runGitCommand(request, execRunner, options = {}) {
   }
 
   const result = next.value ?? null;
+  const output = result?.output?.aggregated_output?.text ?? "";
+  const compressedOutput = compressToolOutput(output);
 
   return createToolCallResult({
     callId: request.call_id,
     name: request.name,
     status: result?.error ? TOOL_CALL_RESULT_STATUSES.FAILED : TOOL_CALL_RESULT_STATUSES.COMPLETED,
-    output: result?.output?.aggregated_output?.text ?? "",
+    output: compressedOutput.text,
     error: result?.error ?? null,
     raw: {
+      outputSummary: compressedOutput.summary,
       capability: createCapabilityDecision({
         request: capabilityRequest,
         decision: "allow"
