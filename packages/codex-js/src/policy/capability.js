@@ -39,13 +39,28 @@ export const CAPABILITY_DECISIONS = Object.freeze({
 });
 
 export function createCapabilityRequest(options = {}) {
+  const resource = String(options.resource ?? CAPABILITY_RESOURCES.TOOL);
+  const action = String(options.action ?? CAPABILITY_ACTIONS.RUN);
+  const subject = String(options.subject ?? "");
+  const description = options.description == null ? null : String(options.description);
+  const risk = normalizeCapabilityRisk(options.risk);
+  const metadata = options.metadata ?? {};
+  const auditId = String(options.auditId ?? options.audit_id ?? createCapabilityAuditId({
+    resource,
+    action,
+    subject,
+    risk,
+    metadata
+  }));
+
   return {
-    resource: String(options.resource ?? CAPABILITY_RESOURCES.TOOL),
-    action: String(options.action ?? CAPABILITY_ACTIONS.RUN),
-    subject: String(options.subject ?? ""),
-    description: options.description == null ? null : String(options.description),
-    risk: normalizeCapabilityRisk(options.risk),
-    metadata: options.metadata ?? {}
+    auditId,
+    resource,
+    action,
+    subject,
+    description,
+    risk,
+    metadata
   };
 }
 
@@ -54,6 +69,7 @@ export function createExecCapabilityRequest(options = {}) {
   const risk = capabilityRiskFromCommand(command);
 
   return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
     resource: CAPABILITY_RESOURCES.EXEC,
     action: CAPABILITY_ACTIONS.EXECUTE,
     subject: command,
@@ -71,6 +87,7 @@ export function createExecCapabilityRequest(options = {}) {
 
 export function createApplyPatchCapabilityRequest(options = {}) {
   return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
     resource: CAPABILITY_RESOURCES.FILE,
     action: CAPABILITY_ACTIONS.WRITE,
     subject: "apply_patch",
@@ -86,6 +103,7 @@ export function createApplyPatchCapabilityRequest(options = {}) {
 
 export function createToolCapabilityRequest(options = {}) {
   return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
     resource: options.resource ?? CAPABILITY_RESOURCES.TOOL,
     action: options.action ?? CAPABILITY_ACTIONS.RUN,
     subject: options.subject ?? options.tool ?? "",
@@ -126,6 +144,7 @@ export function createNetworkCapabilityRequest(options = {}) {
   const subject = String(options.subject ?? options.url ?? options.tool ?? "");
 
   return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
     resource: CAPABILITY_RESOURCES.NETWORK,
     action: CAPABILITY_ACTIONS.CONNECT,
     subject,
@@ -147,6 +166,7 @@ export function createFilesystemWriteCapabilityRequest(options = {}) {
   const targetPath = String(options.path ?? "");
 
   return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
     resource: CAPABILITY_RESOURCES.TOOL,
     action: CAPABILITY_ACTIONS.WRITE,
     subject: `${method}:${targetPath}`,
@@ -167,6 +187,7 @@ export function createProcessSpawnCapabilityRequest(options = {}) {
   const command = String(options.commandText ?? options.command ?? argv.join(" "));
 
   return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
     resource: CAPABILITY_RESOURCES.EXEC,
     action: CAPABILITY_ACTIONS.EXECUTE,
     subject: command,
@@ -179,6 +200,29 @@ export function createProcessSpawnCapabilityRequest(options = {}) {
       env: options.env ?? null,
       processHandle: options.processHandle ?? null,
       source: "app-server-process"
+    }
+  });
+}
+
+export function createCommandSessionCapabilityRequest(options = {}) {
+  const command = String(options.command ?? "");
+
+  return createCapabilityRequest({
+    auditId: options.auditId ?? options.audit_id,
+    resource: CAPABILITY_RESOURCES.EXEC,
+    action: CAPABILITY_ACTIONS.EXECUTE,
+    subject: command,
+    description: `Execute command session: ${command}`,
+    risk: capabilityRiskFromCommand(command),
+    metadata: {
+      command,
+      argv: options.argv ?? null,
+      cwd: options.cwd ?? null,
+      env: options.env ?? null,
+      processId: options.processId ?? null,
+      tty: Boolean(options.tty ?? false),
+      streamStdin: Boolean(options.streamStdin ?? false),
+      source: "app-server-command-session"
     }
   });
 }
@@ -349,4 +393,43 @@ export function normalizeCapabilityRisk(value) {
   return Object.values(CAPABILITY_RISKS).includes(risk)
     ? risk
     : CAPABILITY_RISKS.MEDIUM;
+}
+
+export function createCapabilityAuditId(options = {}) {
+  return `cap_${stableHash(stableStringify({
+    resource: options.resource ?? CAPABILITY_RESOURCES.TOOL,
+    action: options.action ?? CAPABILITY_ACTIONS.RUN,
+    subject: options.subject ?? "",
+    risk: options.risk ?? CAPABILITY_RISKS.MEDIUM,
+    metadata: options.metadata ?? {}
+  }))}`;
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
+  }
+
+  const entries = Object.entries(value)
+    .filter(([, entryValue]) => entryValue !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right));
+
+  return `{${entries.map(([key, entryValue]) =>
+    `${JSON.stringify(key)}:${stableStringify(entryValue)}`
+  ).join(",")}}`;
+}
+
+function stableHash(text) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(36).padStart(7, "0");
 }

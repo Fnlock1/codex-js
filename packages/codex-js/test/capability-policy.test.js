@@ -16,6 +16,8 @@ import {
   capabilityRiskFromCommand,
   checkCapability,
   createApplyPatchCapabilityRequest,
+  createCapabilityAuditId,
+  createCommandSessionCapabilityRequest,
   createExecCapabilityRequest,
   createFilesystemWriteCapabilityRequest,
   createMcpToolCapabilityRequest,
@@ -41,6 +43,26 @@ test("capability requests map exec operations to approval metadata", () => {
   assert.equal(approval.action, APPROVAL_ACTIONS.EXECUTE);
   assert.equal(approval.subject, "npm test");
   assert.equal(approval.metadata.capability.metadata.tool, "shell_command");
+});
+
+test("capability requests include stable audit ids", () => {
+  const left = createExecCapabilityRequest({
+    command: "npm test",
+    cwd: "/workspace"
+  });
+  const right = createExecCapabilityRequest({
+    cwd: "/workspace",
+    command: "npm test"
+  });
+  const explicit = createExecCapabilityRequest({
+    command: "npm test",
+    auditId: "cap_custom"
+  });
+
+  assert.match(left.auditId, /^cap_[0-9a-z]+$/);
+  assert.equal(left.auditId, right.auditId);
+  assert.equal(explicit.auditId, "cap_custom");
+  assert.equal(createCapabilityAuditId(left), left.auditId);
 });
 
 test("capability requests map apply_patch writes to approval metadata", () => {
@@ -141,6 +163,26 @@ test("capability requests map app-server process spawn to exec approval metadata
   assert.equal(approval.subject, "node -e console.log(1)");
   assert.equal(approval.metadata.capability.metadata.processHandle, "proc-1");
   assert.equal(approval.metadata.capability.metadata.source, "app-server-process");
+});
+
+test("capability requests map app-server command sessions to exec approval metadata", () => {
+  const capability = createCommandSessionCapabilityRequest({
+    command: "npm test",
+    argv: ["npm", "test"],
+    cwd: "/workspace",
+    processId: "cmd-1",
+    tty: false,
+    streamStdin: true
+  });
+  const approval = capabilityRequestToApprovalRequest(capability);
+
+  assert.equal(capability.resource, CAPABILITY_RESOURCES.EXEC);
+  assert.equal(capability.action, CAPABILITY_ACTIONS.EXECUTE);
+  assert.equal(approval.resourceType, APPROVAL_RESOURCE_TYPES.EXEC);
+  assert.equal(approval.action, APPROVAL_ACTIONS.EXECUTE);
+  assert.equal(approval.subject, "npm test");
+  assert.equal(approval.metadata.capability.metadata.processId, "cmd-1");
+  assert.equal(approval.metadata.capability.metadata.source, "app-server-command-session");
 });
 
 test("checkCapability combines sandbox and approval decisions", async () => {

@@ -6,9 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { platform } from "node:os";
 import {
-  APPROVAL_ACTIONS,
-  APPROVAL_DECISIONS,
-  APPROVAL_RESOURCE_TYPES
+  APPROVAL_DECISIONS
 } from "../approval/policy.js";
 import { Codex } from "../codex.js";
 import { ExecRunner } from "../exec/runner.js";
@@ -20,6 +18,7 @@ import {
 import { McpRuntime } from "../mcp/runtime.js";
 import {
   capabilityRequestToApprovalRequest,
+  createCommandSessionCapabilityRequest,
   createProcessSpawnCapabilityRequest
 } from "../policy/capability.js";
 import { SANDBOX_DECISIONS } from "../sandbox/policy.js";
@@ -2156,20 +2155,16 @@ export class CodexAppServer {
     }
 
     if (this.approvalGate) {
-      const approval = this.approvalGate.check({
-        resourceType: APPROVAL_RESOURCE_TYPES.EXEC,
-        action: APPROVAL_ACTIONS.EXECUTE,
-        subject: normalized.command,
-        description: `Execute command session: ${normalized.command}`,
-        metadata: {
-          command: normalized.command,
-          cwd: normalized.cwd,
-          argv: normalized.argv ?? null,
-          processId: normalized.processId,
-          tty: normalized.tty,
-          streamStdin: normalized.streamStdin
-        }
+      const capability = createCommandSessionCapabilityRequest({
+        command: normalized.command,
+        argv: normalized.argv ?? null,
+        cwd: normalized.cwd,
+        env: normalized.env ?? null,
+        processId: normalized.processId,
+        tty: normalized.tty,
+        streamStdin: normalized.streamStdin
       });
+      const approval = this.approvalGate.check(capabilityRequestToApprovalRequest(capability));
 
       if (approval.decision !== APPROVAL_DECISIONS.ALLOW) {
         const serverRequest = approval.decision === APPROVAL_DECISIONS.PROMPT
@@ -2190,6 +2185,7 @@ export class CodexAppServer {
             ? "approval required before starting command session"
             : "command session forbidden by approval policy",
           approval,
+          capability,
           requestId: serverRequest?.requestId ?? null,
           serverRequest: serverRequest ? {
             requestId: serverRequest.requestId,

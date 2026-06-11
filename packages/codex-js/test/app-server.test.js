@@ -347,6 +347,10 @@ test("app-server command sessions honor approval and sandbox gates", async () =>
   assert.equal(approvalBlocked.error.code, APP_SERVER_ERROR_CODES.INVALID_PARAMS);
   assert.equal(approvalBlocked.error.data.reason, "approval_required");
   assert.equal(approvalBlocked.error.data.approval.approvalRequest.resource_type, "exec");
+  assert.equal(approvalBlocked.error.data.capability.resource, "exec");
+  assert.equal(approvalBlocked.error.data.capability.action, "execute");
+  assert.equal(approvalBlocked.error.data.capability.metadata.source, "app-server-command-session");
+  assert.match(approvalBlocked.error.data.capability.auditId, /^cap_[0-9a-z]+$/);
 
   const sandboxServer = new CodexAppServer({
     sandboxPolicy: new SandboxPolicy({
@@ -1769,6 +1773,11 @@ test("app-server command approval creates server requests and resolves them", as
 
   assert.equal(blocked.error.data.reason, "approval_required");
   assert.equal(blocked.error.data.serverRequest.method, "item/commandExecution/requestApproval");
+  assert.equal(blocked.error.data.capability.metadata.source, "app-server-command-session");
+  assert.equal(
+    blocked.error.data.approval.approvalRequest.request.metadata.capability.auditId,
+    blocked.error.data.capability.auditId
+  );
   assert.equal(serverRequests.length, 1);
   assert.equal(serverRequests[0].method, "item/commandExecution/requestApproval");
   assert.equal(serverRequests[0].params.command, "npm test");
