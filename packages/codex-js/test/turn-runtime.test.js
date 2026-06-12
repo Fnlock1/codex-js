@@ -484,8 +484,9 @@ test("LoopingTurnRuntime feeds function call output back into the model", async 
     }
   });
   const events = [];
+  const context = createTurnContext({ input: "hello" });
 
-  for await (const event of runtime.runTurn(createTurnContext({ input: "hello" }))) {
+  for await (const event of runtime.runTurn(context)) {
     events.push(event);
   }
 
@@ -502,6 +503,10 @@ test("LoopingTurnRuntime feeds function call output back into the model", async 
     modelClient.lastSession.prompts[1].responseInputItems.find((item) => item.type === "function_call_output").type,
     "function_call_output"
   );
+  assert.equal(context.metadata.convergence_trace.status, "completed");
+  assert.equal(context.metadata.convergence_trace.toolCalls, 1);
+  assert.deepEqual(context.metadata.convergence_trace.uniqueTools, ["test_tool"]);
+  assert.equal(context.metadata.convergence_trace.stopReason, "final_answer");
 });
 
 test("LoopingTurnRuntime injects done criteria into model prompts", async () => {
@@ -573,6 +578,48 @@ test("LoopingTurnRuntime can use SafeToolCallRuntime for dry-run shell tools", a
     "dry-run: npm test"
   );
   assert.equal(events.at(-2).item.content[0].text, "checked");
+});
+
+test("LoopingTurnRuntime counts compressed tool outputs in convergence trace", async () => {
+  const modelClient = createScriptedModelClient([
+    [
+      {
+        type: "function_call",
+        callId: "call-1",
+        name: "large_output"
+      }
+    ],
+    [
+      {
+        text: "done"
+      }
+    ]
+  ]);
+  const runtime = new LoopingTurnRuntime({
+    modelClient,
+    toolRuntime: {
+      async run(toolCall) {
+        return createToolCallResult({
+          callId: toolCall.call_id,
+          name: toolCall.name,
+          status: TOOL_CALL_RESULT_STATUSES.COMPLETED,
+          output: "[... tool output compressed ...]",
+          raw: {
+            outputSummary: {
+              compressed: true
+            }
+          }
+        });
+      }
+    }
+  });
+  const context = createTurnContext({ input: "hello" });
+
+  for await (const _event of runtime.runTurn(context)) {
+    // consume
+  }
+
+  assert.equal(context.metadata.convergence_trace.compressedToolOutputs, 1);
 });
 
 test("LoopingTurnRuntime can use SafeToolCallRuntime for apply_patch dry-runs", async () => {
@@ -762,8 +809,9 @@ test("LoopingTurnRuntime injects a convergence warning near the tool iteration l
     }
   });
   const events = [];
+  const context = createTurnContext({ input: "hello" });
 
-  for await (const event of runtime.runTurn(createTurnContext({ input: "hello" }))) {
+  for await (const event of runtime.runTurn(context)) {
     events.push(event);
   }
 
@@ -774,6 +822,7 @@ test("LoopingTurnRuntime injects a convergence warning near the tool iteration l
   ));
 
   assert.match(warning.content[0].text, /Tool iteration budget is almost exhausted/u);
+  assert.equal(context.metadata.convergence_trace.budgetWarningInjected, true);
   assert.equal(events.at(-2).item.content[0].text, "final after warning");
   assert.equal(events.at(-1).type, "turn.completed");
 });
@@ -821,8 +870,9 @@ test("LoopingTurnRuntime injects a warning for repeated identical tool calls", a
     }
   });
   const events = [];
+  const context = createTurnContext({ input: "hello" });
 
-  for await (const event of runtime.runTurn(createTurnContext({ input: "hello" }))) {
+  for await (const event of runtime.runTurn(context)) {
     events.push(event);
   }
 
@@ -833,6 +883,8 @@ test("LoopingTurnRuntime injects a warning for repeated identical tool calls", a
   ));
 
   assert.match(warning.content[0].text, /search_files/u);
+  assert.equal(context.metadata.convergence_trace.repeatedToolWarningInjected, true);
+  assert.equal(context.metadata.convergence_trace.repeatedToolCall.toolName, "search_files");
   assert.equal(events.at(-2).item.content[0].text, "final after repeated warning");
   assert.equal(events.at(-1).type, "turn.completed");
 });
@@ -876,12 +928,16 @@ test("LoopingTurnRuntime fails with actionable details when max tool iterations 
     }
   });
   const events = [];
+  const context = createTurnContext({ input: "hello" });
 
-  for await (const event of runtime.runTurn(createTurnContext({ input: "hello" }))) {
+  for await (const event of runtime.runTurn(context)) {
     events.push(event);
   }
 
   assert.equal(events.at(-2).type, "turn.failed");
+  assert.equal(context.metadata.convergence_trace.status, "failed");
+  assert.equal(context.metadata.convergence_trace.stopReason, "tool_iteration_limit");
+  assert.equal(context.metadata.convergence_trace.errorCode, "tool_iteration_limit");
   assert.equal(events.at(-2).error.code, "tool_iteration_limit");
   assert.equal(events.at(-2).error.details.maxToolIterations, 1);
   assert.match(events.at(-2).error.message, /Tool iteration limit reached/u);

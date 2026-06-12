@@ -139,6 +139,14 @@ export {
   normalizeDoneCriteria
 } from "./core/done-criteria.js";
 export {
+  completeConvergenceTrace,
+  convergenceTraceToJSON,
+  createConvergenceTrace,
+  recordConvergenceBudgetWarning,
+  recordConvergenceRepeatedToolWarning,
+  recordConvergenceToolCall
+} from "./core/convergence-trace.js";
+export {
   MODEL_RESPONSE_ITEM_TYPES,
   MockModelClient,
   MockModelClientSession,

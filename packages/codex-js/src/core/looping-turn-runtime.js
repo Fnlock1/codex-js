@@ -47,6 +47,14 @@ import {
 import { TurnContext } from "./turn-context.js";
 import { TurnRuntime } from "./turn-runtime.js";
 import {
+  completeConvergenceTrace,
+  convergenceTraceToJSON,
+  createConvergenceTrace,
+  recordConvergenceBudgetWarning,
+  recordConvergenceRepeatedToolWarning,
+  recordConvergenceToolCall
+} from "./convergence-trace.js";
+import {
   createToolLoopDetector,
   formatRepeatedToolCallWarning
 } from "./tool-loop-detector.js";
@@ -110,6 +118,10 @@ export class LoopingTurnRuntime extends TurnRuntime {
     });
     const responseInputItems = [...turnContext.responseInputItems];
     const reactTrace = createReactTrace();
+    const convergenceTrace = createConvergenceTrace({
+      maxToolIterations: this.maxToolIterations,
+      doneCriteria: turnContext.doneCriteria
+    });
 
     yield createThreadStartedEvent(turnContext.threadId);
     yield createTurnStartedEvent();
@@ -131,6 +143,7 @@ export class LoopingTurnRuntime extends TurnRuntime {
 
         if (iterationState.shouldWarn && !budgetWarningInjected) {
           budgetWarningInjected = true;
+          recordConvergenceBudgetWarning(convergenceTrace);
           responseInputItems.push(createResponseInputMessageItem({
             role: "system",
             text: formatToolIterationWarning(iterationState)
@@ -155,10 +168,17 @@ export class LoopingTurnRuntime extends TurnRuntime {
               failed: toolResult.result.status === TOOL_CALL_RESULT_STATUSES.FAILED,
               error: toolResult.result.error
             });
+            recordConvergenceToolCall(convergenceTrace, {
+              iteration,
+              toolName: responseItem.name,
+              failed: toolResult.result.status === TOOL_CALL_RESULT_STATUSES.FAILED,
+              compressedOutput: Boolean(toolResult.result.raw?.outputSummary?.compressed)
+            });
             responseInputItems.push(toolResult.responseInputItem);
 
             if (loopState.repeated && !repeatedToolWarningInjected) {
               repeatedToolWarningInjected = true;
+              recordConvergenceRepeatedToolWarning(convergenceTrace, loopState);
               responseInputItems.push(createResponseInputMessageItem({
                 role: "system",
                 text: formatRepeatedToolCallWarning(loopState)
@@ -189,7 +209,11 @@ export class LoopingTurnRuntime extends TurnRuntime {
 
         if (toolCallsThisIteration === 0) {
           completeReactTrace(reactTrace);
+          completeConvergenceTrace(convergenceTrace, {
+            reason: "final_answer"
+          });
           turnContext.metadata.react_trace = reactTraceToJSON(reactTrace);
+          turnContext.metadata.convergence_trace = convergenceTraceToJSON(convergenceTrace);
           yield createItemCompletedEvent(createAssistantMessageItem(responseText, {
             id: assistantId,
             status: ITEM_STATUSES.COMPLETED
@@ -204,7 +228,13 @@ export class LoopingTurnRuntime extends TurnRuntime {
       completeReactTrace(reactTrace, {
         failed: true
       });
+      completeConvergenceTrace(convergenceTrace, {
+        failed: true,
+        reason: error.code === "tool_iteration_limit" ? "tool_iteration_limit" : "error",
+        errorCode: error.code ?? null
+      });
       turnContext.metadata.react_trace = reactTraceToJSON(reactTrace);
+      turnContext.metadata.convergence_trace = convergenceTraceToJSON(convergenceTrace);
       yield createItemCompletedEvent(createAssistantMessageItem("", {
         id: assistantId,
         status: ITEM_STATUSES.FAILED
