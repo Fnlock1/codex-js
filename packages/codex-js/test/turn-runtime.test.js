@@ -745,6 +745,65 @@ test("LoopingTurnRuntime injects a convergence warning near the tool iteration l
   assert.equal(events.at(-1).type, "turn.completed");
 });
 
+test("LoopingTurnRuntime injects a warning for repeated identical tool calls", async () => {
+  const repeatedCall = {
+    type: "function_call",
+    name: "search_files",
+    arguments: {
+      query: "needle"
+    }
+  };
+  const modelClient = createScriptedModelClient([
+    [
+      {
+        ...repeatedCall,
+        callId: "call-1"
+      }
+    ],
+    [
+      {
+        ...repeatedCall,
+        callId: "call-2"
+      }
+    ],
+    [
+      {
+        text: "final after repeated warning"
+      }
+    ]
+  ]);
+  const runtime = new LoopingTurnRuntime({
+    maxToolIterations: 5,
+    repeatedToolCallThreshold: 2,
+    modelClient,
+    toolRuntime: {
+      async run(toolCall) {
+        return createToolCallResult({
+          callId: toolCall.call_id,
+          name: toolCall.name,
+          status: TOOL_CALL_RESULT_STATUSES.COMPLETED,
+          output: "same output"
+        });
+      }
+    }
+  });
+  const events = [];
+
+  for await (const event of runtime.runTurn(createTurnContext({ input: "hello" }))) {
+    events.push(event);
+  }
+
+  const thirdPromptItems = modelClient.lastSession.prompts[2].responseInputItems;
+  const warning = thirdPromptItems.find((item) => (
+    item.role === "system" &&
+    item.content[0].text.includes("Repeated tool-call pattern detected")
+  ));
+
+  assert.match(warning.content[0].text, /search_files/u);
+  assert.equal(events.at(-2).item.content[0].text, "final after repeated warning");
+  assert.equal(events.at(-1).type, "turn.completed");
+});
+
 test("LoopingTurnRuntime fails with actionable details when max tool iterations are exceeded", async () => {
   const runtime = new LoopingTurnRuntime({
     maxToolIterations: 1,

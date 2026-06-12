@@ -175,6 +175,13 @@ export {
   toolIterationState
 } from "./core/tool-iteration-budget.js";
 export {
+  DEFAULT_REPEATED_TOOL_CALL_THRESHOLD,
+  ToolLoopDetector,
+  createToolCallSignature,
+  createToolLoopDetector,
+  formatRepeatedToolCallWarning
+} from "./core/tool-loop-detector.js";
+export {
   REACT_STEP_STATUSES,
   appendReactAction,
   appendReactThought,

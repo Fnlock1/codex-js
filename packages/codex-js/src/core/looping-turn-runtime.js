@@ -47,6 +47,10 @@ import {
 import { TurnContext } from "./turn-context.js";
 import { TurnRuntime } from "./turn-runtime.js";
 import {
+  createToolLoopDetector,
+  formatRepeatedToolCallWarning
+} from "./tool-loop-detector.js";
+import {
   DEFAULT_MAX_TOOL_ITERATIONS,
   createToolIterationBudget,
   createToolIterationLimitError,
@@ -79,6 +83,9 @@ export class LoopingTurnRuntime extends TurnRuntime {
       warningRemaining: options.toolIterationWarningRemaining
     });
     this.maxToolIterations = this.toolIterationBudget.maxIterations;
+    this.toolLoopDetectorOptions = {
+      threshold: options.repeatedToolCallThreshold
+    };
   }
 
   /**
@@ -112,6 +119,8 @@ export class LoopingTurnRuntime extends TurnRuntime {
     try {
       let responseText = "";
       let budgetWarningInjected = false;
+      let repeatedToolWarningInjected = false;
+      const toolLoopDetector = createToolLoopDetector(this.toolLoopDetectorOptions);
 
       for (let iteration = 0; iteration <= this.maxToolIterations; iteration += 1) {
         const iterationState = toolIterationState(iteration, this.toolIterationBudget);
@@ -136,6 +145,7 @@ export class LoopingTurnRuntime extends TurnRuntime {
         for (const responseItem of turnResponse) {
           if (isToolCallModelResponseItem(responseItem)) {
             toolCallsThisIteration += 1;
+            const loopState = toolLoopDetector.record(responseItem);
             const reactStep = appendReactAction(reactTrace, {
               name: responseItem.name,
               arguments: responseItem.arguments
@@ -146,6 +156,15 @@ export class LoopingTurnRuntime extends TurnRuntime {
               error: toolResult.result.error
             });
             responseInputItems.push(toolResult.responseInputItem);
+
+            if (loopState.repeated && !repeatedToolWarningInjected) {
+              repeatedToolWarningInjected = true;
+              responseInputItems.push(createResponseInputMessageItem({
+                role: "system",
+                text: formatRepeatedToolCallWarning(loopState)
+              }));
+            }
+
             continue;
           }
 
