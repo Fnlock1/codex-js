@@ -27,6 +27,7 @@ test("createTurnContext normalizes input and serializes core fields", () => {
   const context = createTurnContext({
     input: "hello",
     workingDirectory: "/workspace",
+    doneCriteria: ["answer directly"],
     source: "test"
   });
   const json = context.toJSON();
@@ -35,6 +36,8 @@ test("createTurnContext normalizes input and serializes core fields", () => {
   assert.equal(context.inputText(), "hello");
   assert.equal(isAbsolute(json.working_directory), true);
   assert.match(json.working_directory.replace(/\\/g, "/"), /\/workspace$/);
+  assert.deepEqual(json.done_criteria, ["answer directly"]);
+  assert.match(json.done_criteria_text, /answer directly/u);
   assert.equal(json.metadata.source, "test");
 });
 
@@ -496,9 +499,36 @@ test("LoopingTurnRuntime feeds function call output back into the model", async 
   assert.equal(toolResult.item.response_input_item.type, "function_call_output");
   assert.equal(modelClient.lastSession.prompts.length, 2);
   assert.equal(
-    modelClient.lastSession.prompts[1].responseInputItems[0].type,
+    modelClient.lastSession.prompts[1].responseInputItems.find((item) => item.type === "function_call_output").type,
     "function_call_output"
   );
+});
+
+test("LoopingTurnRuntime injects done criteria into model prompts", async () => {
+  const modelClient = createScriptedModelClient([
+    [
+      {
+        text: "done"
+      }
+    ]
+  ]);
+  const runtime = new LoopingTurnRuntime({
+    modelClient
+  });
+  const events = [];
+
+  for await (const event of runtime.runTurn(createTurnContext({
+    input: "hello",
+    doneCriteria: ["Return a concise final answer."]
+  }))) {
+    events.push(event);
+  }
+
+  assert.match(modelClient.lastSession.prompts[0].doneCriteriaText, /Done criteria:/u);
+  assert.match(modelClient.lastSession.prompts[0].doneCriteriaText, /Return a concise final answer/u);
+  assert.deepEqual(modelClient.lastSession.prompts[0].doneCriteria, ["Return a concise final answer."]);
+  assert.equal(modelClient.lastSession.prompts[0].responseInputItems.length, 0);
+  assert.equal(events.at(-1).type, "turn.completed");
 });
 
 test("LoopingTurnRuntime can use SafeToolCallRuntime for dry-run shell tools", async () => {
@@ -539,7 +569,7 @@ test("LoopingTurnRuntime can use SafeToolCallRuntime for dry-run shell tools", a
   assert.equal(toolResult.item.status, "completed");
   assert.equal(toolResult.item.output, "dry-run: npm test");
   assert.equal(
-    modelClient.lastSession.prompts[1].responseInputItems[0].output.body,
+    modelClient.lastSession.prompts[1].responseInputItems.find((item) => item.type === "function_call_output").output.body,
     "dry-run: npm test"
   );
   assert.equal(events.at(-2).item.content[0].text, "checked");
@@ -585,7 +615,7 @@ test("LoopingTurnRuntime can use SafeToolCallRuntime for apply_patch dry-runs", 
   assert.match(toolResult.item.output, /patch was not applied/);
   assert.equal(toolResult.item.response_input_item.type, "function_call_output");
   assert.match(
-    modelClient.lastSession.prompts[1].responseInputItems[0].output.body,
+    modelClient.lastSession.prompts[1].responseInputItems.find((item) => item.type === "function_call_output").output.body,
     /patch was not applied/
   );
   assert.equal(events.at(-2).item.content[0].text, "patch previewed");
@@ -639,7 +669,7 @@ test("LoopingTurnRuntime feeds apply_patch plan output back into the model", asy
   assert.match(toolResult.item.output, /plan computed successfully/);
   assert.equal(toolResult.item.response_input_item.type, "function_call_output");
   assert.match(
-    modelClient.lastSession.prompts[1].responseInputItems[0].output.body,
+    modelClient.lastSession.prompts[1].responseInputItems.find((item) => item.type === "function_call_output").output.body,
     /patch was not applied/
   );
   assert.equal(events.at(-2).item.content[0].text, "patch planned");
@@ -695,7 +725,7 @@ test("LoopingTurnRuntime feeds custom tool output back into the model", async ()
 
   assert.equal(toolResult.item.response_input_item.type, "custom_tool_call_output");
   assert.equal(
-    modelClient.lastSession.prompts[1].responseInputItems[0].type,
+    modelClient.lastSession.prompts[1].responseInputItems.find((item) => item.type === "custom_tool_call_output").type,
     "custom_tool_call_output"
   );
   assert.equal(events.at(-2).item.content[0].text, "patched");
@@ -738,7 +768,10 @@ test("LoopingTurnRuntime injects a convergence warning near the tool iteration l
   }
 
   const secondPromptItems = modelClient.lastSession.prompts[1].responseInputItems;
-  const warning = secondPromptItems.find((item) => item.role === "system");
+  const warning = secondPromptItems.find((item) => (
+    item.role === "system" &&
+    item.content[0].text.includes("Tool iteration budget is almost exhausted")
+  ));
 
   assert.match(warning.content[0].text, /Tool iteration budget is almost exhausted/u);
   assert.equal(events.at(-2).item.content[0].text, "final after warning");

@@ -5,6 +5,10 @@
  */
 import { resolve } from "node:path";
 import { createThreadId, normalizeUserInput, userInputToText } from "../protocol/index.js";
+import {
+  createDoneCriteriaMessage,
+  normalizeDoneCriteria
+} from "./done-criteria.js";
 
 /**
  * 定义 TurnContext 类，封装当前模块的状态和行为。
@@ -26,6 +30,8 @@ export class TurnContext {
     this.memories = Array.isArray(options.memories) ? options.memories : [];
     this.memoryContextText = String(options.memoryContextText ?? "");
     this.history = Array.isArray(options.history) ? options.history : [];
+    this.doneCriteria = normalizeDoneCriteria(options.doneCriteria ?? options.done_criteria);
+    this.doneCriteriaText = createDoneCriteriaMessage(this.doneCriteria);
     this.metadata = {
       startedAt: options.startedAt ?? new Date().toISOString(),
       source: options.source ?? "codex-js",
@@ -55,6 +61,8 @@ export class TurnContext {
       memories: this.memories,
       memory_context_text: this.memoryContextText,
       history: this.history,
+      done_criteria: this.doneCriteria,
+      done_criteria_text: this.doneCriteriaText,
       metadata: this.metadata
     };
   }

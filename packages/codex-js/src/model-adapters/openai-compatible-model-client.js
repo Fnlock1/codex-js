@@ -206,7 +206,8 @@ export class OpenAICompatibleModelClientSession extends ModelClientSession {
       this.defaultSystemPrompt,
       this.systemPrompt,
       prompt?.workingDirectory ? `Current working directory: ${prompt.workingDirectory}` : "",
-      prompt?.memoryContextText ? String(prompt.memoryContextText) : ""
+      prompt?.memoryContextText ? String(prompt.memoryContextText) : "",
+      prompt?.doneCriteriaText ? String(prompt.doneCriteriaText) : ""
     ].filter(Boolean).join("\n\n");
   }
 

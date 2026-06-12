@@ -147,12 +147,17 @@ export function createModelPrompt(context) {
     inputText: context.inputText(),
     threadId: context.threadId,
     workingDirectory: context.workingDirectory,
-    metadata: context.metadata,
+    metadata: {
+      ...(context.metadata ?? {}),
+      doneCriteria: context.doneCriteria ?? []
+    },
     tools: context.tools ?? [],
     parallelToolCalls: false,
     outputSchema: null,
     memories: context.memories ?? [],
     memoryContextText: context.memoryContextText ?? "",
+    doneCriteria: context.doneCriteria ?? [],
+    doneCriteriaText: context.doneCriteriaText ?? "",
     responseInputItems: context.responseInputItems ?? []
   };
 }
@@ -307,6 +312,8 @@ export function modelPromptToJSON(prompt) {
     ...prompt,
     memories: Array.isArray(prompt?.memories) ? [...prompt.memories] : [],
     memoryContextText: prompt?.memoryContextText ?? "",
+    doneCriteria: Array.isArray(prompt?.doneCriteria) ? [...prompt.doneCriteria] : [],
+    doneCriteriaText: prompt?.doneCriteriaText ?? "",
     responseInputItems: Array.isArray(prompt?.responseInputItems)
       ? [...prompt.responseInputItems]
       : []

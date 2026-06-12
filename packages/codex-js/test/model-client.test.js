@@ -31,13 +31,17 @@ import {
 test("createModelPrompt maps TurnContext into model input", () => {
   const context = createTurnContext({
     input: "hello",
-    workingDirectory: "/workspace"
+    workingDirectory: "/workspace",
+    doneCriteria: ["finish cleanly"]
   });
   const prompt = createModelPrompt(context);
 
   assert.equal(prompt.inputText, "hello");
   assert.equal(prompt.threadId, context.threadId);
   assert.deepEqual(prompt.tools, []);
+  assert.deepEqual(prompt.doneCriteria, ["finish cleanly"]);
+  assert.match(prompt.doneCriteriaText, /finish cleanly/u);
+  assert.equal(prompt.responseInputItems.length, 0);
   assert.equal(prompt.parallelToolCalls, false);
 });
 
@@ -630,6 +634,47 @@ test("OpenAICompatibleModelClient does not replay old tool outputs in a fresh se
 
   assert.equal(requests[0].messages.some((message) => message.role === "tool"), false);
   assert.equal(requests[0].messages.at(-1).role, "user");
+});
+
+test("OpenAICompatibleModelClient includes done criteria in the system prompt", async () => {
+  const requests = [];
+  const client = new OpenAICompatibleModelClient({
+    baseUrl: "https://provider.example/v1",
+    model: "model-a",
+    fetch: async (_url, request) => {
+      requests.push(JSON.parse(request.body));
+
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: "ok"
+                }
+              }
+            ]
+          };
+        }
+      };
+    }
+  });
+
+  for await (const _item of client.createSession().streamResponse({
+    inputText: "ship it",
+    workingDirectory: "C:\\workspace",
+    tools: [],
+    doneCriteriaText: "Done criteria:\n1. Report validation.",
+    responseInputItems: []
+  })) {
+    // consume
+  }
+
+  assert.equal(requests[0].messages[0].role, "system");
+  assert.match(requests[0].messages[0].content, /Done criteria:/u);
+  assert.equal(requests[0].messages.some((message) => message.role === "tool"), false);
 });
 
 test("OpenAICompatibleModelClient falls back to pending assistant tool call ids", async () => {

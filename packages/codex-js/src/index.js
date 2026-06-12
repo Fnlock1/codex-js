@@ -134,6 +134,11 @@ export {
   createTurnContext
 } from "./core/turn-context.js";
 export {
+  DEFAULT_DONE_CRITERIA,
+  createDoneCriteriaMessage,
+  normalizeDoneCriteria
+} from "./core/done-criteria.js";
+export {
   MODEL_RESPONSE_ITEM_TYPES,
   MockModelClient,
   MockModelClientSession,

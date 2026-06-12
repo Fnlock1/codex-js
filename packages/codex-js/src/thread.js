@@ -143,6 +143,9 @@ export class Thread {
           responseInputItems: await thread.responseInputItemsForNextTurn(),
           memories: recalledMemories,
           memoryContextText: formatRecalledMemories(recalledMemories),
+          doneCriteria: options.doneCriteria ?? options.done_criteria ??
+            thread.threadOptions.doneCriteria ?? thread.threadOptions.done_criteria ??
+            thread.codexOptions.doneCriteria ?? thread.codexOptions.done_criteria,
           metadata: {
             memory: {
               recalled: recalledMemories,

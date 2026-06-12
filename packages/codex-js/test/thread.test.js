@@ -100,6 +100,40 @@ test("thread passes persisted response input items into the next turn", async ()
   }
 });
 
+test("thread passes done criteria into turn context", async () => {
+  const sessionStoreDirectory = await mkdtemp(join(tmpdir(), "codex-js-done-criteria-"));
+  const contexts = [];
+
+  try {
+    const codex = new Codex({
+      sessionStoreDirectory,
+      runtime: {
+        async *runTurn(context) {
+          contexts.push(context.toJSON());
+          yield createItemCompletedEvent(createAssistantMessageItem("done", {
+            status: "completed"
+          }));
+          yield createTurnCompletedEvent();
+        }
+      }
+    });
+
+    await codex.startThread().run("ship it", {
+      doneCriteria: [
+        "Implement the focused change.",
+        "Report verification."
+      ]
+    });
+
+    assert.deepEqual(contexts[0].done_criteria, [
+      "Implement the focused change.",
+      "Report verification."
+    ]);
+  } finally {
+    await rm(sessionStoreDirectory, { recursive: true, force: true });
+  }
+});
+
 test("thread.injectResponseItems appends raw model-visible history", async () => {
   const sessionStoreDirectory = await mkdtemp(join(tmpdir(), "codex-js-inject-"));
   const contexts = [];
