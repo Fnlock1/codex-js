@@ -42,6 +42,23 @@ export {
   pathIsInsideRoot
 } from "./sandbox/policy.js";
 export {
+  SANDBOX_RUNTIME_TYPES,
+  SANDBOX_SESSION_STATUSES,
+  SandboxRuntime,
+  createSandboxSessionRecord,
+  normalizeSandboxRuntimeType
+} from "./sandbox/runtime.js";
+export {
+  LocalSandboxRuntime,
+  createLocalSandboxRuntime
+} from "./sandbox/local-runtime.js";
+export {
+  DOCKER_SANDBOX_ERROR_CODES,
+  DockerSandboxRuntime,
+  createDockerSandboxRuntime,
+  detectDockerSandboxAvailability
+} from "./sandbox/docker-runtime.js";
+export {
   CAPABILITY_ACTIONS,
   CAPABILITY_DECISIONS,
   CAPABILITY_RESOURCES,
