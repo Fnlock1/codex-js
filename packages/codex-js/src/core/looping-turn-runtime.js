@@ -11,6 +11,7 @@ import {
   createItemCompletedEvent,
   createItemStartedEvent,
   createItemUpdatedEvent,
+  createResponseInputMessageItem,
   createReasoningItem,
   createResponseToolCallOutputItem,
   createThreadStartedEvent,
@@ -45,8 +46,15 @@ import {
 } from "./react-trace.js";
 import { TurnContext } from "./turn-context.js";
 import { TurnRuntime } from "./turn-runtime.js";
+import {
+  DEFAULT_MAX_TOOL_ITERATIONS,
+  createToolIterationBudget,
+  createToolIterationLimitError,
+  formatToolIterationWarning,
+  toolIterationState
+} from "./tool-iteration-budget.js";
 
-export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
+export { DEFAULT_MAX_TOOL_ITERATIONS };
 
 /**
  * 支持工具循环的核心 turn runtime。
@@ -66,7 +74,11 @@ export class LoopingTurnRuntime extends TurnRuntime {
       mockResponse: options.mockResponse
     });
     this.toolRuntime = options.toolRuntime ?? new NoopToolCallRuntime();
-    this.maxToolIterations = options.maxToolIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
+    this.toolIterationBudget = createToolIterationBudget({
+      maxToolIterations: options.maxToolIterations,
+      warningRemaining: options.toolIterationWarningRemaining
+    });
+    this.maxToolIterations = this.toolIterationBudget.maxIterations;
   }
 
   /**
@@ -99,8 +111,23 @@ export class LoopingTurnRuntime extends TurnRuntime {
 
     try {
       let responseText = "";
+      let budgetWarningInjected = false;
 
       for (let iteration = 0; iteration <= this.maxToolIterations; iteration += 1) {
+        const iterationState = toolIterationState(iteration, this.toolIterationBudget);
+
+        if (iterationState.isFinalIteration) {
+          throw createToolIterationLimitError(iterationState);
+        }
+
+        if (iterationState.shouldWarn && !budgetWarningInjected) {
+          budgetWarningInjected = true;
+          responseInputItems.push(createResponseInputMessageItem({
+            role: "system",
+            text: formatToolIterationWarning(iterationState)
+          }));
+        }
+
         const modelPrompt = createModelPrompt(turnContext);
         modelPrompt.responseInputItems = [...responseInputItems];
         const turnResponse = await collectModelResponse(modelSession, modelPrompt);
@@ -153,7 +180,7 @@ export class LoopingTurnRuntime extends TurnRuntime {
         }
       }
 
-      throw new Error(`max tool iterations exceeded: ${this.maxToolIterations}`);
+      throw createToolIterationLimitError(toolIterationState(this.maxToolIterations, this.toolIterationBudget));
     } catch (error) {
       completeReactTrace(reactTrace, {
         failed: true

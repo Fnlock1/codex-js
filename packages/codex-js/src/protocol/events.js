@@ -109,9 +109,13 @@ export function createItemCompletedEvent(item) {
  * @returns {unknown} 返回处理后的结果。
  */
 export function createErrorEvent(error) {
+  const normalized = normalizeError(error);
+
   return {
     type: EVENT_TYPES.ERROR,
-    message: normalizeError(error).message
+    message: normalized.message,
+    code: normalized.code ?? null,
+    details: normalized.details ?? null
   };
 }
 
@@ -150,9 +154,19 @@ export function isThreadEvent(value) {
  */
 export function normalizeError(error) {
   if (error && typeof error.message === "string") {
-    return {
+    const normalized = {
       message: error.message
     };
+
+    if (error.code != null) {
+      normalized.code = String(error.code);
+    }
+
+    if (error.details && typeof error.details === "object") {
+      normalized.details = error.details;
+    }
+
+    return normalized;
   }
 
   return {

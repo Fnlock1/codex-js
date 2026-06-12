@@ -701,7 +701,51 @@ test("LoopingTurnRuntime feeds custom tool output back into the model", async ()
   assert.equal(events.at(-2).item.content[0].text, "patched");
 });
 
-test("LoopingTurnRuntime fails when max tool iterations are exceeded", async () => {
+test("LoopingTurnRuntime injects a convergence warning near the tool iteration limit", async () => {
+  const modelClient = createScriptedModelClient([
+    [
+      {
+        type: "function_call",
+        callId: "call-1",
+        name: "test_tool"
+      }
+    ],
+    [
+      {
+        text: "final after warning"
+      }
+    ]
+  ]);
+  const runtime = new LoopingTurnRuntime({
+    maxToolIterations: 3,
+    toolIterationWarningRemaining: 2,
+    modelClient,
+    toolRuntime: {
+      async run(toolCall) {
+        return createToolCallResult({
+          callId: toolCall.call_id,
+          name: toolCall.name,
+          status: TOOL_CALL_RESULT_STATUSES.COMPLETED,
+          output: "ok"
+        });
+      }
+    }
+  });
+  const events = [];
+
+  for await (const event of runtime.runTurn(createTurnContext({ input: "hello" }))) {
+    events.push(event);
+  }
+
+  const secondPromptItems = modelClient.lastSession.prompts[1].responseInputItems;
+  const warning = secondPromptItems.find((item) => item.role === "system");
+
+  assert.match(warning.content[0].text, /Tool iteration budget is almost exhausted/u);
+  assert.equal(events.at(-2).item.content[0].text, "final after warning");
+  assert.equal(events.at(-1).type, "turn.completed");
+});
+
+test("LoopingTurnRuntime fails with actionable details when max tool iterations are exceeded", async () => {
   const runtime = new LoopingTurnRuntime({
     maxToolIterations: 1,
     modelClient: createScriptedModelClient([
@@ -746,8 +790,11 @@ test("LoopingTurnRuntime fails when max tool iterations are exceeded", async () 
   }
 
   assert.equal(events.at(-2).type, "turn.failed");
-  assert.match(events.at(-2).error.message, /max tool iterations exceeded/);
+  assert.equal(events.at(-2).error.code, "tool_iteration_limit");
+  assert.equal(events.at(-2).error.details.maxToolIterations, 1);
+  assert.match(events.at(-2).error.message, /Tool iteration limit reached/u);
   assert.equal(events.at(-1).type, "error");
+  assert.equal(events.at(-1).code, "tool_iteration_limit");
 });
 
 test("MockAgentRuntime remains a compatibility alias", async () => {

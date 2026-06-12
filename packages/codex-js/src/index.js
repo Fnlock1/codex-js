@@ -168,6 +168,13 @@ export {
   LoopingTurnRuntime
 } from "./core/looping-turn-runtime.js";
 export {
+  DEFAULT_TOOL_ITERATION_WARNING_REMAINING,
+  createToolIterationBudget,
+  createToolIterationLimitError,
+  formatToolIterationWarning,
+  toolIterationState
+} from "./core/tool-iteration-budget.js";
+export {
   REACT_STEP_STATUSES,
   appendReactAction,
   appendReactThought,
