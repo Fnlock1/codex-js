@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // 将 shared 源码编译到 dist，供 workspace 内其他包消费。
+    "outDir": "dist",
+    // 固定源码根目录，让声明文件可以稳定映射回 src。
+    "rootDir": "src",
+    // 开启项目引用和增量构建元数据，配合 monorepo 构建使用。
+    "composite": true
+  },
+  "include": ["src/**/*.ts"]
+}

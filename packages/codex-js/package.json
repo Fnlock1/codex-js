@@ -1,0 +1,21 @@
+{
+  "name": "codex-js",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A standalone pure JavaScript migration scaffold for OpenAI Codex.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "codex-js": "./bin/codex-js.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node scripts/check-syntax.js",
+    "test": "node --test"
+  }
+}

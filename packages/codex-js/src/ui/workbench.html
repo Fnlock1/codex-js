@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>codex-js AI 工作台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-soft: #f0f4f8;
+      --text: #17202a;
+      --muted: #687386;
+      --line: #dce3ea;
+      --blue: #2563eb;
+      --green: #0f8b5f;
+      --red: #c2410c;
+      --violet: #7c3aed;
+      --shadow: 0 10px 30px rgba(24, 39, 75, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 18px;
+      overflow-y: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #111827;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .brand small {
+      color: var(--muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    .field {
+      margin: 14px 0;
+    }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .switches {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .toggle {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: #334155;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      width: auto;
+      margin: 0;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 9px;
+      margin-top: 16px;
+    }
+
+    .primary,
+    .ghost {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 13px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .primary {
+      color: white;
+      background: var(--blue);
+    }
+
+    .primary:disabled {
+      cursor: not-allowed;
+      background: #94a3b8;
+    }
+
+    .ghost {
+      color: #334155;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+    }
+
+    .main {
+      padding: 18px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 14px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      box-shadow: var(--shadow);
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 7px;
+      font-size: 22px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: #334155;
+      border-radius: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+
+    .tab.active {
+      background: #111827;
+      border-color: #111827;
+      color: #fff;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 14px;
+    }
+
+    .panel {
+      min-height: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel header {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .panel header h2 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .panel header span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .content {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .event {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px;
+      background: #fff;
+    }
+
+    .event-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .event-title {
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--panel-soft);
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      color: var(--green);
+      background: #e8f7f0;
+    }
+
+    .badge.run {
+      color: var(--blue);
+      background: #e8efff;
+    }
+
+    .badge.fail {
+      color: var(--red);
+      background: #fff0e8;
+    }
+
+    .badge.expert {
+      color: var(--violet);
+      background: #f3ecff;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: #1f2937;
+      background: #f8fafc;
+      border: 1px solid #e5edf5;
+      border-radius: 8px;
+      padding: 10px;
+      line-height: 1.5;
+      font-size: 12px;
+    }
+
+    .assistant {
+      font-size: 14px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .side-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .expert-card,
+    .log-line {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .expert-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .expert-card p,
+    .log-line p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .main,
+      .sidebar {
+        padding: 12px;
+      }
+
+      .summary,
+      .switches {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">AI</div>
+        <div>
+          <h1>codex-js 工作台</h1>
+          <small>实时查看调用、专家和结果</small>
+        </div>
+      </div>
+
+      <form id="runForm">
+        <div class="field">
+          <label for="prompt">任务</label>
+          <textarea id="prompt" required>帮我写一个 B 站风格官网 HTML，保存为 index.html，可以模拟看视频。最后只输出中文摘要、文件路径和验证结果。</textarea>
+        </div>
+
+        <div class="field">
+          <label for="cwd">工作目录</label>
+          <input id="cwd" value="F:\接单\新建文件夹">
+        </div>
+
+        <div class="field">
+          <label for="provider">模型提供商</label>
+          <select id="provider">
+            <option value="deepseek">deepseek</option>
+            <option value="openai-compatible">openai-compatible</option>
+            <option value="">使用配置默认值</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="model">模型</label>
+          <input id="model" value="v4-pro">
+        </div>
+
+        <div class="field">
+          <label for="apiKey">API Key</label>
+          <input id="apiKey" type="password" placeholder="填入本次运行的 key，不会保存">
+        </div>
+
+        <div class="field">
+          <label for="timeout">超时 ms</label>
+          <input id="timeout" inputmode="numeric" value="300000">
+        </div>
+
+        <div class="field">
+          <label for="iterations">最大工具轮数</label>
+          <input id="iterations" inputmode="numeric" value="30">
+        </div>
+
+        <div class="switches">
+          <label class="toggle"><input id="expertTeam" type="checkbox" checked> 专家团</label>
+          <label class="toggle"><input id="allowShell" type="checkbox" checked> 终端</label>
+          <label class="toggle"><input id="allowPatch" type="checkbox" checked> 写文件</label>
+          <label class="toggle"><input id="yes" type="checkbox" checked> 自动批准</label>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="runButton" type="submit">开始运行</button>
+          <button class="ghost" id="clearButton" type="button">清空</button>
+        </div>
+      </form>
+    </aside>
+
+    <main class="main">
+      <section class="summary">
+        <div class="metric"><span>状态</span><strong id="statusText">待运行</strong></div>
+        <div class="metric"><span>工具调用</span><strong id="toolCount">0</strong></div>
+        <div class="metric"><span>专家</span><strong id="expertCount">0</strong></div>
+        <div class="metric"><span>日志</span><strong id="logCount">0</strong></div>
+      </section>
+
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="timeline">过程</button>
+        <button class="tab" data-tab="final">摘要</button>
+        <button class="tab" data-tab="raw">原始事件</button>
+      </nav>
+
+      <section class="workspace">
+        <div class="panel">
+          <header>
+            <h2 id="mainTitle">执行过程</h2>
+            <span id="mainHint">AI 调用、工具结果和输出都会在这里出现</span>
+          </header>
+          <div class="content">
+            <div id="timelineView" class="timeline"></div>
+            <div id="finalView" class="assistant hidden"></div>
+            <pre id="rawView" class="hidden"></pre>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <header>
+            <h2>专家和日志</h2>
+            <span>自动归纳</span>
+          </header>
+          <div class="content">
+            <div id="experts" class="side-list"></div>
+            <div id="logs" class="side-list" style="margin-top: 12px;"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      running: false,
+      tools: 0,
+      logs: 0,
+      experts: new Map(),
+      finalText: "",
+      raw: []
+    };
+
+    const nodes = {
+      form: document.getElementById("runForm"),
+      runButton: document.getElementById("runButton"),
+      clearButton: document.getElementById("clearButton"),
+      statusText: document.getElementById("statusText"),
+      toolCount: document.getElementById("toolCount"),
+      expertCount: document.getElementById("expertCount"),
+      logCount: document.getElementById("logCount"),
+      timeline: document.getElementById("timelineView"),
+      final: document.getElementById("finalView"),
+      raw: document.getElementById("rawView"),
+      experts: document.getElementById("experts"),
+      logs: document.getElementById("logs"),
+      tabs: document.getElementById("tabs"),
+      mainTitle: document.getElementById("mainTitle"),
+      mainHint: document.getElementById("mainHint")
+    };
+
+    nodes.form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await runTask();
+    });
+
+    nodes.clearButton.addEventListener("click", () => {
+      resetUi();
+    });
+
+    nodes.tabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-tab]");
+      if (!button) return;
+      setTab(button.dataset.tab);
+    });
+
+    async function runTask() {
+      resetUi();
+      state.running = true;
+      nodes.runButton.disabled = true;
+      nodes.statusText.textContent = "运行中";
+
+      const response = await fetch("/api/run", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(formPayload())
+      });
+
+      if (!response.ok || !response.body) {
+        addLog("error", `启动失败：${response.status}`);
+        finishRun(false);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() || "";
+        for (const chunk of chunks) {
+          handleSseChunk(chunk);
+        }
+      }
+    }
+
+    function formPayload() {
+      return {
+        prompt: value("prompt"),
+        cwd: value("cwd"),
+        modelProvider: value("provider"),
+        model: value("model"),
+        modelApiKey: value("apiKey"),
+        modelTimeoutMs: value("timeout"),
+        maxToolIterations: value("iterations"),
+        expertTeam: checked("expertTeam"),
+        allowShell: checked("allowShell"),
+        allowApplyPatch: checked("allowPatch"),
+        yes: checked("yes")
+      };
+    }
+
+    function handleSseChunk(chunk) {
+      const lines = chunk.split("\n");
+      const event = lines.find((line) => line.startsWith("event:"))?.slice(6).trim() || "message";
+      const dataLine = lines.find((line) => line.startsWith("data:"));
+      const payload = dataLine ? JSON.parse(dataLine.slice(5)) : {};
+
+      if (event === "codex-event") {
+        handleCodexEvent(payload);
+        return;
+      }
+
+      if (event === "meta") {
+        addLog("meta", payload.command);
+        return;
+      }
+
+      if (event === "log") {
+        addLog(payload.stream || "log", payload.text || "");
+        return;
+      }
+
+      if (event === "error") {
+        addLog("error", payload.message || "unknown error");
+        finishRun(false);
+        return;
+      }
+
+      if (event === "done") {
+        finishRun(payload.code === 0);
+      }
+    }
+
+    function handleCodexEvent(event) {
+      state.raw.push(event);
+      nodes.raw.textContent = state.raw.map((entry) => JSON.stringify(entry, null, 2)).join("\n\n");
+
+      if (event.type === "thread.started") {
+        addEvent("会话已创建", event.thread_id, "run");
+        return;
+      }
+
+      if (event.type === "turn.started") {
+        addEvent("AI 开始思考", "正在请求模型并等待下一步动作", "run");
+        return;
+      }
+
+      if (event.type === "turn.completed") {
+        addEvent("任务完成", "模型已结束本轮执行", "ok");
+        return;
+      }
+
+      if (event.type === "turn.failed" || event.type === "error") {
+        addEvent("任务失败", event.error?.message || event.message || "unknown error", "fail");
+        return;
+      }
+
+      if (!event.item) {
+        return;
+      }
+
+      handleItem(event.type, event.item);
+    }
+
+    function handleItem(type, item) {
+      if (item.type === "message" && item.role === "user") {
+        addEvent("用户任务", itemText(item), "ok");
+        return;
+      }
+
+      if (item.type === "message" && item.role === "assistant") {
+        state.finalText = itemText(item);
+        nodes.final.textContent = state.finalText || "等待最终摘要...";
+        if (type === "item.completed") {
+          addEvent("最终摘要", state.finalText || "无输出", item.status === "failed" ? "fail" : "ok");
+        }
+        return;
+      }
+
+      if (item.type === "reasoning") {
+        addEvent("推理摘要", (item.summary_text || []).join("\n") || "模型返回了推理摘要", "run");
+        return;
+      }
+
+      if (item.type === "command_execution") {
+        addEvent(type === "item.started" ? "执行终端命令" : "终端命令完成", commandSummary(item), item.status === "failed" ? "fail" : "run");
+        return;
+      }
+
+      if (item.type === "tool_call") {
+        if (type === "item.started") {
+          state.tools += 1;
+          nodes.toolCount.textContent = state.tools;
+        }
+        handleToolCall(type, item);
+        return;
+      }
+    }
+
+    function handleToolCall(type, item) {
+      const name = item.name || "tool";
+      const args = item.arguments || {};
+      const status = item.status === "failed" ? "fail" : type === "item.completed" ? "ok" : "run";
+      const titleMap = {
+        plan_experts: "技术 Leader 规划专家",
+        spawn_agent: "派出专家",
+        wait_agent: "等待专家结果",
+        apply_patch: "写入文件补丁",
+        shell_command: "执行终端命令",
+        exec_command: "执行终端命令",
+        read_file: "读取文件",
+        list_files: "查看文件列表",
+        search_files: "搜索文件",
+        remember: "写入记忆",
+        recall_memory: "召回记忆"
+      };
+
+      if (name === "spawn_agent") {
+        const expert = args.expert_profile || {};
+        const expertId = expert.id || args.expert || args.expert_id || args.role || `expert-${state.experts.size + 1}`;
+        state.experts.set(expertId, {
+          name: expert.name || args.name || expertId,
+          role: expert.role || args.role || "",
+          task: args.task || "",
+          status: type === "item.completed" ? "已派出" : "派出中"
+        });
+        renderExperts();
+      }
+
+      addEvent(titleMap[name] || `调用工具：${name}`, toolSummary(name, args, item.output), name.includes("agent") || name.includes("expert") ? "expert" : status);
+    }
+
+    function addEvent(title, body, badge) {
+      const node = document.createElement("article");
+      node.className = "event";
+      node.innerHTML = `
+        <div class="event-top">
+          <div class="event-title"></div>
+          <span class="badge ${badge || ""}"></span>
+        </div>
+        <pre></pre>
+      `;
+      node.querySelector(".event-title").textContent = title;
+      node.querySelector(".badge").textContent = badgeText(badge);
+      node.querySelector("pre").textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
+      nodes.timeline.appendChild(node);
+      node.scrollIntoView({ block: "end" });
+    }
+
+    function addLog(stream, text) {
+      state.logs += 1;
+      nodes.logCount.textContent = state.logs;
+      const node = document.createElement("div");
+      node.className = "log-line";
+      node.innerHTML = `<strong></strong><p></p>`;
+      node.querySelector("strong").textContent = stream;
+      node.querySelector("p").textContent = text;
+      nodes.logs.prepend(node);
+    }
+
+    function renderExperts() {
+      nodes.experts.innerHTML = "";
+      for (const expert of state.experts.values()) {
+        const node = document.createElement("div");
+        node.className = "expert-card";
+        node.innerHTML = `<strong></strong><p></p><p></p>`;
+        node.querySelector("strong").textContent = `${expert.name}${expert.role ? ` · ${expert.role}` : ""}`;
+        node.querySelectorAll("p")[0].textContent = expert.status;
+        node.querySelectorAll("p")[1].textContent = expert.task;
+        nodes.experts.appendChild(node);
+      }
+      nodes.expertCount.textContent = state.experts.size;
+    }
+
+    function finishRun(ok) {
+      state.running = false;
+      nodes.runButton.disabled = false;
+      nodes.statusText.textContent = ok ? "已完成" : "已失败";
+      if (!state.finalText && ok) {
+        nodes.final.textContent = "运行结束，但没有捕获到最终摘要。";
+      }
+    }
+
+    function resetUi() {
+      state.running = false;
+      state.tools = 0;
+      state.logs = 0;
+      state.experts.clear();
+      state.finalText = "";
+      state.raw = [];
+      nodes.runButton.disabled = false;
+      nodes.statusText.textContent = "待运行";
+      nodes.toolCount.textContent = "0";
+      nodes.expertCount.textContent = "0";
+      nodes.logCount.textContent = "0";
+      nodes.timeline.innerHTML = "";
+      nodes.final.textContent = "";
+      nodes.raw.textContent = "";
+      nodes.experts.innerHTML = "";
+      nodes.logs.innerHTML = "";
+    }
+
+    function setTab(tab) {
+      for (const button of nodes.tabs.querySelectorAll(".tab")) {
+        button.classList.toggle("active", button.dataset.tab === tab);
+      }
+      nodes.timeline.classList.toggle("hidden", tab !== "timeline");
+      nodes.final.classList.toggle("hidden", tab !== "final");
+      nodes.raw.classList.toggle("hidden", tab !== "raw");
+      nodes.mainTitle.textContent = tab === "timeline" ? "执行过程" : tab === "final" ? "最终摘要" : "原始事件";
+      nodes.mainHint.textContent = tab === "raw" ? "排查问题时再看这里" : "自动整理后的可读输出";
+    }
+
+    function itemText(item) {
+      return (item.content || []).filter((entry) => entry.type === "text").map((entry) => entry.text).join("");
+    }
+
+    function commandSummary(item) {
+      return [item.command, item.cwd ? `cwd: ${item.cwd}` : "", item.aggregated_output || ""].filter(Boolean).join("\n\n");
+    }
+
+    function toolSummary(name, args, output) {
+      const compactArgs = JSON.stringify(args, null, 2);
+      if (!output) return compactArgs;
+      return `${compactArgs}\n\n输出：\n${truncate(output, 2400)}`;
+    }
+
+    function truncate(text, max) {
+      const value = String(text || "");
+      return value.length > max ? `${value.slice(0, max)}\n...已截断，完整内容见原始事件` : value;
+    }
+
+    function badgeText(badge) {
+      return {
+        ok: "完成",
+        run: "进行中",
+        fail: "失败",
+        expert: "专家"
+      }[badge] || "事件";
+    }
+
+    function value(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function checked(id) {
+      return document.getElementById(id).checked;
+    }
+  </script>
+</body>
+</html>
